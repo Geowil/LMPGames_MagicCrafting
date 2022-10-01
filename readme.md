@@ -6,7 +6,7 @@ Conflicts: Unknown<br>
 Credit:
 <ul>
 	<li>Gimmer_</li>
-<ul>
+</ul>
 
 Terms of Use:<br>
 Free for commercial and non-commercial projects; accreditation required. Game keys/downloads, while not required, are welcome.

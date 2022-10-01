@@ -3556,30 +3556,16 @@ function processFormula(newSkillInst, componentSkills, catalystItems){
 	let bMathPresent = false;
 	for (let i1 = 0; i1 < formArr.length; i1++){
 		let currFormPart = formArr[i1];
-
-		if (i1 == 0){
-			let baseMatch = currFormPart.match(/(\d+)[^ ]/);
-			let formBaseDmg = (baseMatch.length > 0 ? baseMatch[0] : 0);
-			finalBaseDmg += parseInt(formBaseDmg);
-			currFormPart = String(finalBaseDmg);
-			if (currFormPart.toLowerCase().includes("math")){
-				bMathPresent = true;
-			}
-		} else if (currFormPart.toLowerCase().includes("mateffect")){
-			currentFormPart = currFormPart.toLowerCase();
-			currFormPart = currentFormPart.replace("mateffect", String(matVal));
-		} else if (currFormPart.toLowerCase().includes("mdfeffect")){
-			currentFormPart = currFormPart.toLowerCase();
-			currFormPart = currentFormPart.replace("mdfeffect", String(mdfVal));
+		currFormPart = currFormPart.toLowerCase();
+		if (currFormPart.includes("basedmgmod")){
+			currFormPart = currFormPart.replace("basedmgmod", String(finalBaseDmg))
+		} else if (currFormPart.includes("mateffect")){
+			currFormPart = currFormPart.replace("mateffect", String(matVal));
+		} else if (currFormPart.includes("mdfeffect")){
+			currFormPart = currFormPart.replace("mdfeffect", String(mdfVal));
 		}
 
 		finalFormString += currFormPart + " ";
-	}
-
-	if (bMathPresent){
-		finalFormString = "Math.floor(" + finalFormString;
-	} else {
-		finalFormString = "Math.floor(" + finalFormString + ")";
 	}
 
 	return finalFormString;

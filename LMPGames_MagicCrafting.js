@@ -77,6 +77,67 @@
 * @parent Main Settings
 *
 *
+* @param Enable Gold Cost System
+* @desc When enabled, allows you to define a currency cost to craft spells.  See GitHub for full information.
+* @type boolean
+* @default false
+*
+*
+* @param Enable Item Cost System
+* @desc When enabled, allows you to define an item cost to craft spells.  See GitHub for full information.
+* @type boolean
+* @default false
+*
+*
+* @param Cost Settings
+* @desc Settings related to the Item/Gold cost systems
+*
+*
+* @param Gold Cost Formula
+* @desc This defines the formula for calculating gold cost.  Do not change the placeholder variables.
+* @type text
+* @default "Math.floor((baseCost * ((baseCost * skLvl)^^baseFactor)) + ((baseCost * (numComp * numCat) * skLvl)^^baseFactor))"
+* @parent Cost Settings
+*
+*
+* @param Gold Base Cost
+* @desc This setting defines the base cost for the gold cost formula.  Change this first when adjusting the gold cost for crafting.
+* @type Text
+* @default 50
+* @parent Cost Settings
+*
+*
+* @param Gold Base Factor
+* @desc This setting defines the base factor for the gold cost formula.  Be careful changing this, it will have a large impact on the gold cost.
+* @type Text
+* @default 1.1
+* @parent Cost Settings
+*
+*
+* @param Item Cost Formula
+* @desc This defines the formula for calculating item cost.  Do not change the placeholder variables.
+* @type text
+* @default "Math.floor((((baseCost / 4) + ((skLvl / 2.45) * (numComp + numCat))) * (((baseCost / 4) + (skLvl / 2.8))^^baseFactor)) / (20 * (baseFactor + (numComp + numCat))))"
+* @parent Cost Settings
+*
+*
+* @param Item Base Cost
+* @desc This setting defines the base cost for the item cost formula.  Change this first when adjusting the item cost for crafting.
+* @type Text
+* @default 50
+* @parent Cost Settings
+*
+*
+* @param Item Base Factor
+* @desc This setting defines the base factor for the item cost formula.  Be careful changing this, it will have a large impact on the item cost.
+* @type Text
+* @default 1.1
+* @parent Cost Settings
+*
+*
+* @param 
+*
+*
 * @param Format Settings
 * @default
 *
@@ -144,6 +205,284 @@
 *
 */
 
+
+/*
+
+Magic Crafting:
+	New Features:
+		Cost System			
+			Item Cost
+				Cost Item Setting
+					Can be overridden by skill
+					
+			Gold Cost
+			Default cost formulas and values as plugin settings
+				Can override with individual skills values
+				
+			Formula
+				Cost based on
+					number of components
+					number of catalysts
+					level of the skill
+			
+			Create a cost window
+				Set up like info window
+					Maybe horizontal?
+					Between Info and Command windows
+		
+		
+		Create Gold Window
+		
+		
+		Add Catalyst Info Section to Final Info
+
+		
+		Ability to enable or disable showing all final spell info at any point not obfuscated - remove
+		
+		
+		Add operational mode to decouple from Magic Schools Plugin
+			Should be able to unlock spells directly from the plugin to be crafted instead having to learn them first
+			Will require adding in level check on crafting spells because the gating on MS plugin won't exist for this mode
+			
+			
+		Add in optional setting to prevent auto-unlocking the next skill on crafting
+			Check to see if there is a plugin command existing to unlock said next skill and if not add it.
+			
+			
+		Name Alias System
+			Allow item and skill names to be shortened
+		
+		
+		Move plugin data into separate objects from the database
+			Everything should be stored in a plugin settings object with the skill and item data stored in their
+			child objects.
+			
+			Any property that is updated on skills and items should be moved to this object.
+			
+			The skill/item child objects should be id indexed array of objects like the database objects are constructed.
+			
+			
+		Save/Load plugin data
+			Save crafted spells into the plugin data object
+			On load, load the crafted spells back into the database and then remove them from the plugin data object
+						
+		
+		
+		
+		
+		Allow crafting directly to a selected character, bypassing the need for Magic Schools plugin (maybe)
+		
+		Add element icons - done
+		indent effect data for catalysts - done
+		Ability to hide crafted spells from blueprint list - Done
+		Ability to overwrite an existing crafted skill - done
+		Allow limiting the max refinement level - done
+		Ability to restrict name change - done		
+		Catalyst states not being added to crafted spells OR they aren't showing in any info windows - done
+		Display Mode - done
+			Show Names in Blueprint List/Data in info window
+		Hide Name in BP List/Obfuscate data in info window
+		
+	Bugs:		
+		When catalyst effects were added to the formula, formula structure would sometimes be incorrect - kind of done]
+		
+		Show all component/catalyst effects in pallet info window - Done
+		Final spell info is not showing - Done
+		Add break between component data - done
+		Once crafted, no obfuscation - done
+		In DM1, dont show final info if plugin setting not turned on - done
+		After crafting, a duplicate recipe spell is being created - done
+		When hitting Craft Spell when its disabled, crashes game - done
+		When select component spells, sometimes multiples of the same name are added - done
+		refinement level not being added to name - done
+		crafting overwrite recipe skill id in database - done
+		base damage in formula was calculated to NaN - done
+		base damage calculated value too high - done
+		
+		
+		
+		
+		
+		
+Magic Schools:
+	New Features:								
+		Recode data proccessing to save plugin into its own object that can be saved - done	
+		
+		Saving/Loading of plugin data - done		
+		
+		Recode of info window to use utility functions for line breaks, line placement, and others. - done
+				
+		Add option for name aliasing - done
+			Add support for alias note tag attrs - done
+				Items - done
+				Spells - done
+				
+			Add coding to implement aliased names. - done
+			
+		Recode cost window to display info similar to info window - done
+			Resize cost list, and info windows - done
+				Info window should have reduced width and increased height - done
+				List windows should have increased width - done
+				Cost window should have increased width and height - done
+				Standardize the formatting - done
+
+			Move gold window down to be level with bottom of info window - done
+			Hide cost if init pri school being selected - done
+		
+		Add in operation mode for crafting plugin, if it is turned off should still be able to learn magic you just won't have to
+		craft it first. - Done
+			Help documentation will have to have different instructions for using this plugin with the crafting plugin vs standalone.
+					
+		When Crafting is enabled, add a option to disable unlocking skills for crafting after learning the previous skill. - done
+		
+		If a requirement is missing, highlight it with red text color - done
+				
+		See if we can reduce the number of cost formula plugin settings - didnt do
+			Move these settings into the schools themselves so that they can be configured per school. - done
+			Add in an additional note tag attribute to further allow skill cost to be customized - done
+		
+		Add an option to show either named spells that have not been crafted in the tree selection skill info window or to show them
+		with obfuscated names - done
+			Display Mode option - done
+				Mode 0 = current functionality - done
+				Mode 1 = show all skills in a tree w/ locked skills grayed out - done
+					Recipe skills should be hidden from list when they have been crafted and magic crafting plugin is being used. - done
+				Mode 2 = Same as Mode 1 except that the skill names are obfuscated - done
+			Recipe skills should be hidden from list when they have been crafted and magic crafting plugin is being used. - done
+		
+		Add " - Learned" to tree spell list if the character knows the spell - optional - done		
+		
+		After learning a spell, kick the player back to the tree selection window if there are no more learnable spells in a tree - done
+		
+		If there are no learnable spells in a tree, disable that tree from being selected in the tree selection list - done
+		
+		Add Item Cost System - done
+			Configurable per school type but there will also be a global setting if the school setting is not used - done
+				Cost formula will be per school, no global or skill setting - done
+			Add an attribute per skill/school type; will override the cost item used set by global setting if it exists - done
+		
+		
+	
+	Bugs:
+		Crash on plugin data creation
+		Sometimes crashes in between school select and main window	
+
+		Getting incorrect values from magic schools list caused crash - done
+		Filtering on select Learn skills caused crash after selecting character - done
+		Tree list window not getting learned skills for checks - done
+		Tree spell info not showing - done
+		Spell list window not showing spells - done
+		After buying spell, not return to tree view
+		Cancel not showing in spell list - done
+		Learned school types not showing on main info window - done
+		No break after title in info window tree list - done
+		Missing var caused crash - done
+		Misnamed var caused crash - done
+		Not all skill info showing on info window - done
+		Tree List window info section not showing properly, showing main info window data - done
+		Br's not working in cost window - done
+		Broke entire plugin, again - done
+		Item icon undefined - done
+		Skill data overwritten by item data - done
+		Limit window title not showing correctly - done
+		Req level has NaN - done
+		Formatting issues - done
+		Can select a secondary school while not meeting requirements - done
+		Missing functions to get costs from cost window caused crashes - done
+		Schools not removing money when bought - done
+		Gold not removed when buying school because gold cost calculated and set from a new location and was not updated to pull the cost from that location - done
+		Gold was being removed when buying skill because code to calculate and set the gold cost from the spell list window was not removed. - done
+		Variable not being set caused a crash - done
+		Variables not set up correctly in scene caused crash - done
+		dataItm logic issues causing crashes - done
+		Missnamed function call caused crashes - done
+		Function calls missing params - done
+		Variable rename type caused crashes - done
+		Variable name typo caused crash - done
+		"School Name" showing up in the school list window - config issue - done
+		Logic issue with cost checking prevented cost checks from working. - done		
+		Improper function definition caused plugin compile errors - done
+		Extra ) caused plugin compile errors - done
+		Code copied from one window to another but not modified to work in new window caused crash - done
+		Forgot to remove "this" from some function calls, caused crashes when buying spells and schools - done
+		Forgot to change code drawItem function of a window to the new implementation for getting costs; caused crash - done
+		Changed some function definitions and broke the entire plugin and then fixed the entire plugin by removing those changes. - done
+		Removed extra ( that was causing compile crash - done
+		Forgot to update the default spell cost formulas to remove numOfSchools var as its pre-calculated in another param; caused crashes - done
+		Added missing } that was causing a compiler crash - done		
+		When opening spell list window, skLvl not defined error - done
+		When opening spell list window, crash due to getSpellCost function missing - done
+		When opening spell list window, crash due to getSpellCostItemId function missing - done
+		Crashes caused by skLvl, currPrtyItems, itemCost not being defined - done
+		Crash caused by bDoesNotMeetRequirements not being deinfed - done
+		Crash caused by school tree initialization code being in the wrong place - done
+		Crash caused by variable being in the wrong place when buying a spell - done
+		Spell names not showing properly in display mode 1/2 - done
+		Spell names missing ) on level - done
+		Spell names, when not unlocked, show the color code because did nnot double escape - done
+		When selecting a tree to learn spells, the plugin would crash - done
+		When selecting a school to learn spells, the tree list would cause a crash - done
+		When selecting a school to learn spells, no trees displayed - done
+		On selection of a seconday school going into the tree list on an additional character, the plugin crashed - done
+		In some places, not having trees after learning the school causes issues because we need to have the trees available - done
+		Tree List window help text doesn't update back to original text when new spells are unlocked in a previously locked tree - done
+		Tree List window help text changes to "learned all skills" for all trees when a single tree is locked - done
+		Sometimes crashes after tree select window when in debugger - done
+		When selecting a tree for a secondary school, plugin crashes - done
+		Tree List window help text does not update properly when a tree is locked for no more learnable skills - done
+		Tree Spell Info window not updating properly or something; shows Fire I instead of Fireball I for Fireball tree. - Done
+		Tree Spell Info does not include newly crafted skills - done
+		Gold cost not calculating correctly - done
+		Some schools Pri/Sec config data is nulled - done
+		Crash selecting a primary school - done
+		Crash selecting a secondary school - done
+		Crash when moving to cancel in the school selection list - done
+		Help text list of Tree Select Window is not updating properly. - done
+		On selecting Cancel in spell list window, not all of the information in the cost window is removed - done
+		Can select secondary school option from main menu even after using all available school slots - done
+		On selecting a tree, caused a crash - done
+		On selecting a spell, caused a crash - done
+		On selecting a spell, gold calculated to NaN - done
+		when purchasing a secondary school or an additional primary school, the cost is not shown - done
+		Cost doesnt seem to update when buy second additional school - done
+		Cannot unlock secondary schools - done
+		Info window - too much space - done
+		When ok/cancel, papge index not being reset - done
+		gold window not showing changes to party gold - done
+		Always show gold window - done
+		Shink cost window - done
+		increase spacing between items in list windows - done
+		Figure out why face sprite autoload not working - done
+		Some trees are showing spells that are not unlocked yet - done
+		Cancel options should not have "disabled" text coloration - done
+		Sometimes spells from other trees are showing in the spell list for the wrong tree - done (config issue)
+		
+		
+		
+
+BC: 10
+Mod: 15
+Lvl: 12
+Num of Sec Schools: 3
+baseCost + (skLvl * (skLvl * baseCost) / costMod)
+8 + (12 * (96) / 20)
+
+
+((baseCost * numOfSchools) * numOfSchools * (costMod * numOfSchools)) + ((numOfSchools * costMod) * (baseCost * numOfSchools) / 0.5)
+
+Pri Addt School: Math.ceil(baseCost*(numOfSchools+schoolMulti)*(schoolCostMod**(numOfSchools/5)))
+Secd School: Math.ceil((baseCost/2)*(numOfSchools+schoolMulti)*(schoolCostMod**(numOfSchools/5)))
+Pri Init Spell: Math.ceil((baseCost/1.5)+((skLvl*(baseCost/1.5))/skillCostMod))
+Pri Addt Spell: Math.ceil(baseCost+(sklLvl/skillCostMod))
+Secd Spell: Math.ceil((baseCost/2)+((sklLvl*(baseCost/4))/skillCostMod))
+
+
+35-37 E
+38-40 Wnd
+
+
+*/
+
 var Geowil = Geowil || {};
 
 function Window_CraftPalette() { this.initialize.apply(this, arguments); };
@@ -152,9 +491,12 @@ function Window_CraftCatalystSelection() { this.initialize.apply(this, arguments
 function Window_CraftBlueprintList() { this.initialize.apply(this, arguments); };
 function Window_CraftInfo() { this.initialize.apply(this, arguments); };
 function Window_CraftCommand() { this.initialize.apply(this, arguments); };
+function Window_CraftGold() { this.initialize.apply(this, arguments); };
+function Window_CraftCost() { this.initialize.apply(this, arguments); };
 function Scene_MagicCrafting() { this.initialize.apply(this, arguments); };
 function Window_MCNameEdit() { this.initialize.apply(this, arguments); };
 function Scene_MCSkillName() { this.initialize.apply(this, arguments); };
+
 
 var occLst = ["Always", "In Battle", "Out of Battle", "Never"];
 var hitTypLst = ["Always Hits", "Normal", "Uses Mag Evasion"];
@@ -182,7 +524,6 @@ var staticTraits = {
 };
 
 const lmpgamesMagicCraftingParams = PluginManager.parameters('LMPGames_MagicCrafting');
-
 var paletteTxFmt = lmpgamesMagicCraftingParams['Palette Formatting'];
 var cmpTxFmt = lmpgamesMagicCraftingParams['Component Formatting'];
 var catTxFmt = lmpgamesMagicCraftingParams['Catalyst Formatting'];
@@ -198,6 +539,14 @@ var bPreventRename = (lmpgamesMagicCraftingParams['Restrict Spell Renaming'] ===
 var maxObfusChars = parseInt(lmpgamesMagicCraftingParams['Max Number of Obfuscation Characters']);
 var obfuscationChar = lmpgamesMagicCraftingParams['Obfuscation Character'];
 var maxRefineLevel = parseInt(lmpgamesMagicCraftingParams['Max Refine Level']);
+var bEnableGoldCost = (lmpgamesMagicCraftingParams['Enable Gold Cost System'] == 'true');
+var bEnableItemCost = (lmpgamesMagicCraftingParams['Enable Item Cost System'] == 'true');
+var currencyCostFormula = lmpgamesMagicCraftingParams['Gold Cost Formula'];
+var currencyBaseCost = parseInt(lmpgamesMagicCraftingParams['Gold Base Cost']);
+var currencyBaseFactor = parseFloat(lmpgamesMagicCraftingParams['Gold Base Factor']);
+var itemCostFormula = lmpgamesMagicCraftingParams['Item Cost Formula'];
+var itemBaseCost = parseInt(lmpgamesMagicCraftingParams['Item Base Cost']);
+var itemBaseFactor = parseFloat(lmpgamesMagicCraftingParams['Item Base Factor']);
 var currentId = startId;
 var $newSkillInstance = {};
 
@@ -249,8 +598,10 @@ DataManager.processMCraftingNoteTags = function(dataObj, typ){
 						obj["CraftingShowName"] = false;
 						obj["IsRecipe"] = false;
 						obj["Obfuscated"] = (craftingDisplayMode == 1 ? true : false);
-						obj['baseSkillId'] = 0;
-						obj['TimesCrafted'] = 0;
+						obj["baseSkillId"] = 0;
+						obj["TimesCrafted"] = 0;
+						obj["GoldBaseCost"] = 0,
+						obj["ItemBaseCost"] = 0
 					} else if (typ == "item"){
 						obj["IsCatalyst"] = false;
 						obj["CraftingEffects"] = [];
@@ -301,6 +652,10 @@ DataManager.processMCraftingNoteTags = function(dataObj, typ){
 										obj.CanCraft = true;
 									} else if (noteLines[0] == "IsRecipe"){
 										obj.IsRecipe = true;
+									} else  if (noteLines[0] == "GoldBaseCost"){
+										obj.GoldBaseCost = parseInt(noteLines[1]);
+									} else if (noteLines[0] == "ItemBaseCost"){
+										obj.ItemBaseCost = parseInt(noteLines[1]);
 									}
 								}
 
@@ -422,7 +777,7 @@ Scene_MagicCrafting.prototype.createInfoWindow = function(){
 	let y = this._helpWindow.height + 10;
 
 	let w = Graphics.width - x;
-	let h = Graphics.height - y - 90;
+	let h = 280;
 
 	this._craftInfoWnd = new Window_CraftInfo(x, y, w, h);
 	this._craftInfoWnd.hide();
@@ -434,7 +789,7 @@ Scene_MagicCrafting.prototype.createPaletteWindow = function(){
 	let y = this._helpWindow.height + 10;
 
 	let w = 300;
-	let h = 280;
+	let h = 210;
 
 	this._craftPaletteWnd = new Window_CraftPalette(x, y, w, h, this._helpWindow);
 	this._craftPaletteWnd.setHandler('ok', this.paletteOkProcessing.bind(this));
@@ -600,7 +955,7 @@ Scene_MagicCrafting.prototype.blueprintCancelProcessing = function() {
 
 Scene_MagicCrafting.prototype.createCommandWindow = function(){
 	let x = this._craftPaletteWnd.getWidth() + 10;
-	let y = this._craftInfoWnd.getHeight() + this._helpWindow.height + 20;
+	let y = this._craftInfoWnd.getHeight() + this._helpWindow.height + 120;
 	let w = this._craftInfoWnd.getWidth();
 	let h = 60;
 
@@ -844,7 +1199,7 @@ Window_CraftPalette.prototype.itemRect = function(index){
 }
 
 Window_CraftPalette.prototype.numVisibleRows = function() {
-	return 5;
+	return 4;
 }
 Window_CraftPalette.prototype.setCurrentCompId = function(cmpId) { this._selectedComponents[this._currentCmp] = cmpId; }
 Window_CraftPalette.prototype.setCurrentCatId = function(catId) { this._selectedCatalysts[this._currentCat] = catId; }

@@ -77,18 +77,6 @@
 * @parent Main Settings
 *
 *
-* @param Enable Gold Cost System
-* @desc When enabled, allows you to define a currency cost to craft spells.  See GitHub for full information.
-* @type boolean
-* @default false
-*
-*
-* @param Enable Item Cost System
-* @desc When enabled, allows you to define an item cost to craft spells.  See GitHub for full information.
-* @type boolean
-* @default false
-*
-*
 * @param Cost Settings
 * @desc Settings related to the Item/Gold cost systems
 *
@@ -117,7 +105,7 @@
 * @param Item Cost Formula
 * @desc This defines the formula for calculating item cost.  Do not change the placeholder variables.
 * @type text
-* @default "Math.floor((((baseCost / 4) + ((skLvl / 2.45) * (numComp + numCat))) * (((baseCost / 4) + (skLvl / 2.8))^^baseFactor)) / (20 * (baseFactor + (numComp + numCat))))"
+* @default "Math.floor((((baseCost / 4) + ((skLvl / 2.45) * (numComp + numCat))) * (((baseCost / 4) + (skLvl / 2.8))^^baseFactor)) / (60 * (baseFactor + (numComp + numCat))))"
 * @parent Cost Settings
 *
 *
@@ -135,7 +123,9 @@
 * @parent Cost Settings
 *
 *
-* @param 
+* @param Cost Item Id
+* @desc This setting is used to define the item used when crafting new skills.
+* @default 0
 *
 *
 * @param Format Settings
@@ -205,285 +195,12 @@
 *
 */
 
-
-/*
-
-Magic Crafting:
-	New Features:
-		Cost System			
-			Item Cost
-				Cost Item Setting
-					Can be overridden by skill
-					
-			Gold Cost
-			Default cost formulas and values as plugin settings
-				Can override with individual skills values
-				
-			Formula
-				Cost based on
-					number of components
-					number of catalysts
-					level of the skill
-			
-			Create a cost window
-				Set up like info window
-					Maybe horizontal?
-					Between Info and Command windows
-		
-		
-		Create Gold Window
-		
-		
-		Add Catalyst Info Section to Final Info
-
-		
-		Ability to enable or disable showing all final spell info at any point not obfuscated - remove
-		
-		
-		Add operational mode to decouple from Magic Schools Plugin
-			Should be able to unlock spells directly from the plugin to be crafted instead having to learn them first
-			Will require adding in level check on crafting spells because the gating on MS plugin won't exist for this mode
-			
-			
-		Add in optional setting to prevent auto-unlocking the next skill on crafting
-			Check to see if there is a plugin command existing to unlock said next skill and if not add it.
-			
-			
-		Name Alias System
-			Allow item and skill names to be shortened
-		
-		
-		Move plugin data into separate objects from the database
-			Everything should be stored in a plugin settings object with the skill and item data stored in their
-			child objects.
-			
-			Any property that is updated on skills and items should be moved to this object.
-			
-			The skill/item child objects should be id indexed array of objects like the database objects are constructed.
-			
-			
-		Save/Load plugin data
-			Save crafted spells into the plugin data object
-			On load, load the crafted spells back into the database and then remove them from the plugin data object
-						
-		
-		
-		
-		
-		Allow crafting directly to a selected character, bypassing the need for Magic Schools plugin (maybe)
-		
-		Add element icons - done
-		indent effect data for catalysts - done
-		Ability to hide crafted spells from blueprint list - Done
-		Ability to overwrite an existing crafted skill - done
-		Allow limiting the max refinement level - done
-		Ability to restrict name change - done		
-		Catalyst states not being added to crafted spells OR they aren't showing in any info windows - done
-		Display Mode - done
-			Show Names in Blueprint List/Data in info window
-		Hide Name in BP List/Obfuscate data in info window
-		
-	Bugs:		
-		When catalyst effects were added to the formula, formula structure would sometimes be incorrect - kind of done]
-		
-		Show all component/catalyst effects in pallet info window - Done
-		Final spell info is not showing - Done
-		Add break between component data - done
-		Once crafted, no obfuscation - done
-		In DM1, dont show final info if plugin setting not turned on - done
-		After crafting, a duplicate recipe spell is being created - done
-		When hitting Craft Spell when its disabled, crashes game - done
-		When select component spells, sometimes multiples of the same name are added - done
-		refinement level not being added to name - done
-		crafting overwrite recipe skill id in database - done
-		base damage in formula was calculated to NaN - done
-		base damage calculated value too high - done
-		
-		
-		
-		
-		
-		
-Magic Schools:
-	New Features:								
-		Recode data proccessing to save plugin into its own object that can be saved - done	
-		
-		Saving/Loading of plugin data - done		
-		
-		Recode of info window to use utility functions for line breaks, line placement, and others. - done
-				
-		Add option for name aliasing - done
-			Add support for alias note tag attrs - done
-				Items - done
-				Spells - done
-				
-			Add coding to implement aliased names. - done
-			
-		Recode cost window to display info similar to info window - done
-			Resize cost list, and info windows - done
-				Info window should have reduced width and increased height - done
-				List windows should have increased width - done
-				Cost window should have increased width and height - done
-				Standardize the formatting - done
-
-			Move gold window down to be level with bottom of info window - done
-			Hide cost if init pri school being selected - done
-		
-		Add in operation mode for crafting plugin, if it is turned off should still be able to learn magic you just won't have to
-		craft it first. - Done
-			Help documentation will have to have different instructions for using this plugin with the crafting plugin vs standalone.
-					
-		When Crafting is enabled, add a option to disable unlocking skills for crafting after learning the previous skill. - done
-		
-		If a requirement is missing, highlight it with red text color - done
-				
-		See if we can reduce the number of cost formula plugin settings - didnt do
-			Move these settings into the schools themselves so that they can be configured per school. - done
-			Add in an additional note tag attribute to further allow skill cost to be customized - done
-		
-		Add an option to show either named spells that have not been crafted in the tree selection skill info window or to show them
-		with obfuscated names - done
-			Display Mode option - done
-				Mode 0 = current functionality - done
-				Mode 1 = show all skills in a tree w/ locked skills grayed out - done
-					Recipe skills should be hidden from list when they have been crafted and magic crafting plugin is being used. - done
-				Mode 2 = Same as Mode 1 except that the skill names are obfuscated - done
-			Recipe skills should be hidden from list when they have been crafted and magic crafting plugin is being used. - done
-		
-		Add " - Learned" to tree spell list if the character knows the spell - optional - done		
-		
-		After learning a spell, kick the player back to the tree selection window if there are no more learnable spells in a tree - done
-		
-		If there are no learnable spells in a tree, disable that tree from being selected in the tree selection list - done
-		
-		Add Item Cost System - done
-			Configurable per school type but there will also be a global setting if the school setting is not used - done
-				Cost formula will be per school, no global or skill setting - done
-			Add an attribute per skill/school type; will override the cost item used set by global setting if it exists - done
-		
-		
-	
-	Bugs:
-		Crash on plugin data creation
-		Sometimes crashes in between school select and main window	
-
-		Getting incorrect values from magic schools list caused crash - done
-		Filtering on select Learn skills caused crash after selecting character - done
-		Tree list window not getting learned skills for checks - done
-		Tree spell info not showing - done
-		Spell list window not showing spells - done
-		After buying spell, not return to tree view
-		Cancel not showing in spell list - done
-		Learned school types not showing on main info window - done
-		No break after title in info window tree list - done
-		Missing var caused crash - done
-		Misnamed var caused crash - done
-		Not all skill info showing on info window - done
-		Tree List window info section not showing properly, showing main info window data - done
-		Br's not working in cost window - done
-		Broke entire plugin, again - done
-		Item icon undefined - done
-		Skill data overwritten by item data - done
-		Limit window title not showing correctly - done
-		Req level has NaN - done
-		Formatting issues - done
-		Can select a secondary school while not meeting requirements - done
-		Missing functions to get costs from cost window caused crashes - done
-		Schools not removing money when bought - done
-		Gold not removed when buying school because gold cost calculated and set from a new location and was not updated to pull the cost from that location - done
-		Gold was being removed when buying skill because code to calculate and set the gold cost from the spell list window was not removed. - done
-		Variable not being set caused a crash - done
-		Variables not set up correctly in scene caused crash - done
-		dataItm logic issues causing crashes - done
-		Missnamed function call caused crashes - done
-		Function calls missing params - done
-		Variable rename type caused crashes - done
-		Variable name typo caused crash - done
-		"School Name" showing up in the school list window - config issue - done
-		Logic issue with cost checking prevented cost checks from working. - done		
-		Improper function definition caused plugin compile errors - done
-		Extra ) caused plugin compile errors - done
-		Code copied from one window to another but not modified to work in new window caused crash - done
-		Forgot to remove "this" from some function calls, caused crashes when buying spells and schools - done
-		Forgot to change code drawItem function of a window to the new implementation for getting costs; caused crash - done
-		Changed some function definitions and broke the entire plugin and then fixed the entire plugin by removing those changes. - done
-		Removed extra ( that was causing compile crash - done
-		Forgot to update the default spell cost formulas to remove numOfSchools var as its pre-calculated in another param; caused crashes - done
-		Added missing } that was causing a compiler crash - done		
-		When opening spell list window, skLvl not defined error - done
-		When opening spell list window, crash due to getSpellCost function missing - done
-		When opening spell list window, crash due to getSpellCostItemId function missing - done
-		Crashes caused by skLvl, currPrtyItems, itemCost not being defined - done
-		Crash caused by bDoesNotMeetRequirements not being deinfed - done
-		Crash caused by school tree initialization code being in the wrong place - done
-		Crash caused by variable being in the wrong place when buying a spell - done
-		Spell names not showing properly in display mode 1/2 - done
-		Spell names missing ) on level - done
-		Spell names, when not unlocked, show the color code because did nnot double escape - done
-		When selecting a tree to learn spells, the plugin would crash - done
-		When selecting a school to learn spells, the tree list would cause a crash - done
-		When selecting a school to learn spells, no trees displayed - done
-		On selection of a seconday school going into the tree list on an additional character, the plugin crashed - done
-		In some places, not having trees after learning the school causes issues because we need to have the trees available - done
-		Tree List window help text doesn't update back to original text when new spells are unlocked in a previously locked tree - done
-		Tree List window help text changes to "learned all skills" for all trees when a single tree is locked - done
-		Sometimes crashes after tree select window when in debugger - done
-		When selecting a tree for a secondary school, plugin crashes - done
-		Tree List window help text does not update properly when a tree is locked for no more learnable skills - done
-		Tree Spell Info window not updating properly or something; shows Fire I instead of Fireball I for Fireball tree. - Done
-		Tree Spell Info does not include newly crafted skills - done
-		Gold cost not calculating correctly - done
-		Some schools Pri/Sec config data is nulled - done
-		Crash selecting a primary school - done
-		Crash selecting a secondary school - done
-		Crash when moving to cancel in the school selection list - done
-		Help text list of Tree Select Window is not updating properly. - done
-		On selecting Cancel in spell list window, not all of the information in the cost window is removed - done
-		Can select secondary school option from main menu even after using all available school slots - done
-		On selecting a tree, caused a crash - done
-		On selecting a spell, caused a crash - done
-		On selecting a spell, gold calculated to NaN - done
-		when purchasing a secondary school or an additional primary school, the cost is not shown - done
-		Cost doesnt seem to update when buy second additional school - done
-		Cannot unlock secondary schools - done
-		Info window - too much space - done
-		When ok/cancel, papge index not being reset - done
-		gold window not showing changes to party gold - done
-		Always show gold window - done
-		Shink cost window - done
-		increase spacing between items in list windows - done
-		Figure out why face sprite autoload not working - done
-		Some trees are showing spells that are not unlocked yet - done
-		Cancel options should not have "disabled" text coloration - done
-		Sometimes spells from other trees are showing in the spell list for the wrong tree - done (config issue)
-		
-		
-		
-
-BC: 10
-Mod: 15
-Lvl: 12
-Num of Sec Schools: 3
-baseCost + (skLvl * (skLvl * baseCost) / costMod)
-8 + (12 * (96) / 20)
-
-
-((baseCost * numOfSchools) * numOfSchools * (costMod * numOfSchools)) + ((numOfSchools * costMod) * (baseCost * numOfSchools) / 0.5)
-
-Pri Addt School: Math.ceil(baseCost*(numOfSchools+schoolMulti)*(schoolCostMod**(numOfSchools/5)))
-Secd School: Math.ceil((baseCost/2)*(numOfSchools+schoolMulti)*(schoolCostMod**(numOfSchools/5)))
-Pri Init Spell: Math.ceil((baseCost/1.5)+((skLvl*(baseCost/1.5))/skillCostMod))
-Pri Addt Spell: Math.ceil(baseCost+(sklLvl/skillCostMod))
-Secd Spell: Math.ceil((baseCost/2)+((sklLvl*(baseCost/4))/skillCostMod))
-
-
-35-37 E
-38-40 Wnd
-
-
-*/
-
-var Geowil = Geowil || {};
+var LMPGamesCore = LMPGamesCore || {};
+if (Object.keys(LMPGamesCore).length == 0){
+	//throw error
+	console.log("LMPGames_Core plugin not present OR is not above this plugin.  Loading halted!");
+	return;
+}
 
 function Window_CraftPalette() { this.initialize.apply(this, arguments); };
 function Window_CraftComponentSelection() { this.initialize.apply(this, arguments); };
@@ -497,71 +214,40 @@ function Scene_MagicCrafting() { this.initialize.apply(this, arguments); };
 function Window_MCNameEdit() { this.initialize.apply(this, arguments); };
 function Scene_MCSkillName() { this.initialize.apply(this, arguments); };
 
+LMPGamesCore.pluginParams.magicCrafting = PluginManager.parameters('LMPGames_MagicCrafting');
+LMPGamesCore.pluginData.magicCrafting = {
+	skillData: [],
+	itemData: [],
+	classData: []
+}
 
-var occLst = ["Always", "In Battle", "Out of Battle", "Never"];
-var hitTypLst = ["Always Hits", "Normal", "Uses Mag Evasion"];
-var dmgTypLst = ["None","HP Damage", "MP Damage", "Recover HP", "Recover MP", "Drain HP", "Drain MP"];
-var specEffLst = ["Escape"];
-var stScopeList = ["None", "Attack an Enemy", "Attack Anyone", "Attack an Ally", "Cannot Move"];
-var stRmvTimingList = ["None", "After next turn", "After current turn"];
-var scopeLst = [
-	"None","1 Enemy", "All Enemies", "1 Random Enemy", "2 Random Enemies",
-	"3 Random Enemies", "4 Random Enemies", "1 Ally", "All Allies",
-	"1 Ally (Dead)", "All Allies (Dead)", "Self"
-];
-
-var staticTraits = {
-	"21" : ["Max HP","Max MP","Atk","Def","MAtk","MDef","Agl","Luk"],
-	"22" : ["Hit Rate","Eva Rate","Crit Rate","Crit Eva Rate","Mg Eva Rate",
-	        "Mg Reflect Rate","Counter Rate","HP Regen Rate","MP Regen Rate",
-	        "TP Regen Rate"],
-	"23" : ["Targ Rate","Guard Eff Rate","Recv Eff Rate","Pharma Rate","MP Cost Rate",
-	        "TP Chrg Rate","Phys Dmg Rate","Mg Dmg Rate","Floor Dmg Rate","Exp Rate"],
-	"55" : ["Normal","Duel Wield"],
-	"62" : ["Auto Battle (Berserk)","Guard","Substitute (Cover)","Preserve TP"],
-	"63" : ["Normal","Boss","Instant","No Dissolve"],
-	"64" : ["Enc. Rate Half","No Enc","No Ambushes","Inc Pre-Emptive","2x Gold","Double Item Drop"]
-};
-
-const lmpgamesMagicCraftingParams = PluginManager.parameters('LMPGames_MagicCrafting');
-var paletteTxFmt = lmpgamesMagicCraftingParams['Palette Formatting'];
-var cmpTxFmt = lmpgamesMagicCraftingParams['Component Formatting'];
-var catTxFmt = lmpgamesMagicCraftingParams['Catalyst Formatting'];
-var bpTxFmt = lmpgamesMagicCraftingParams['Blueprint Formatting'];
-var startId = parseInt(lmpgamesMagicCraftingParams['Starting Skill ID']);
-var mgDmgRate = parseInt(lmpgamesMagicCraftingParams['Craft Magic Damage Rate'])/100;
-var canUseCatColor = lmpgamesMagicCraftingParams['Can Use Catalyst Color'];
-var cantUseCatColor = lmpgamesMagicCraftingParams['Cannot Use Catalyst Color'];
-var craftingDisplayMode = parseInt(lmpgamesMagicCraftingParams['Display mode']);
-var bEnableCurrencySystem = (lmpgamesMagicCraftingParams['Enable Currency Cost System'] === 'true');
-var bEnableItemSystem = (lmpgamesMagicCraftingParams['Enable Item Cost System'] === 'true');
-var bPreventRename = (lmpgamesMagicCraftingParams['Restrict Spell Renaming'] === 'true');
-var maxObfusChars = parseInt(lmpgamesMagicCraftingParams['Max Number of Obfuscation Characters']);
-var obfuscationChar = lmpgamesMagicCraftingParams['Obfuscation Character'];
-var maxRefineLevel = parseInt(lmpgamesMagicCraftingParams['Max Refine Level']);
-var bEnableGoldCost = (lmpgamesMagicCraftingParams['Enable Gold Cost System'] == 'true');
-var bEnableItemCost = (lmpgamesMagicCraftingParams['Enable Item Cost System'] == 'true');
-var currencyCostFormula = lmpgamesMagicCraftingParams['Gold Cost Formula'];
-var currencyBaseCost = parseInt(lmpgamesMagicCraftingParams['Gold Base Cost']);
-var currencyBaseFactor = parseFloat(lmpgamesMagicCraftingParams['Gold Base Factor']);
-var itemCostFormula = lmpgamesMagicCraftingParams['Item Cost Formula'];
-var itemBaseCost = parseInt(lmpgamesMagicCraftingParams['Item Base Cost']);
-var itemBaseFactor = parseFloat(lmpgamesMagicCraftingParams['Item Base Factor']);
+var paletteTxFmt = LMPGamesCore.pluginParams.magicCrafting['Palette Formatting'];
+var cmpTxFmt = LMPGamesCore.pluginParams.magicCrafting['Component Formatting'];
+var catTxFmt = LMPGamesCore.pluginParams.magicCrafting['Catalyst Formatting'];
+var bpTxFmt = LMPGamesCore.pluginParams.magicCrafting['Blueprint Formatting'];
+var startId = parseInt(LMPGamesCore.pluginParams.magicCrafting['Starting Skill ID']);
+var mgDmgRate = parseInt(LMPGamesCore.pluginParams.magicCrafting['Craft Magic Damage Rate'])/100;
+var canUseCatColor = LMPGamesCore.pluginParams.magicCrafting['Can Use Catalyst Color'];
+var cantUseCatColor = LMPGamesCore.pluginParams.magicCrafting['Cannot Use Catalyst Color'];
+var craftingDisplayMode = parseInt(LMPGamesCore.pluginParams.magicCrafting['Display mode']);
+var bEnableItemSystem = (LMPGamesCore.pluginParams.magicCrafting['Enable Item Cost System'] === 'true');
+var bPreventRename = (LMPGamesCore.pluginParams.magicCrafting['Restrict Spell Renaming'] === 'true');
+var maxObfusChars = parseInt(LMPGamesCore.pluginParams.magicCrafting['Max Number of Obfuscation Characters']);
+var obfuscationChar = LMPGamesCore.pluginParams.magicCrafting['Obfuscation Character'];
+var maxRefineLevel = parseInt(LMPGamesCore.pluginParams.magicCrafting['Max Refine Level']);
+var bEnableCurrencyCostSystem = (LMPGamesCore.pluginParams.magicCrafting['Enable Currency Cost System'] === 'true');
+var bEnableItemCostSystem = (LMPGamesCore.pluginParams.magicCrafting['Enable Item Cost System'] == 'true');
+var currencyCostFormula = LMPGamesCore.pluginParams.magicCrafting['Gold Cost Formula'];
+var currencyBaseCost = parseInt(LMPGamesCore.pluginParams.magicCrafting['Gold Base Cost']);
+var currencyBaseFactor = parseFloat(LMPGamesCore.pluginParams.magicCrafting['Gold Base Factor']);
+var itemCostFormula = LMPGamesCore.pluginParams.magicCrafting['Item Cost Formula'];
+var itemBaseCost = parseInt(LMPGamesCore.pluginParams.magicCrafting['Item Base Cost']);
+var itemBaseFactor = parseFloat(LMPGamesCore.pluginParams.magicCrafting['Item Base Factor']);
+var costItemId = parseInt(LMPGamesCore.pluginParams.magicCrafting['Cost Item Id']);
 var currentId = startId;
 var $newSkillInstance = {};
 
-var staticIconLst = {
-	"11" : ["", "\\i[77]","\\i[64]","\\i[65]","\\i[66]","\\i[67]","\\i[68]","\\i[69]","\\i[70]","\\i[71]", "\\i[321]",
-			"\\i[322]", "\\i[323]", "\\i[324]", "\\i[325]", "\\i[326]", "\\i[327]", "\\i[328]"]
-};
 
-/* TouchInput Functions and Aliases */
-var lmpGamesCodexTouchImput_onMouseMove = TouchInput._onMouseMove;
-TouchInput._onMouseMove = function(event) {
-  lmpGamesCodexTouchImput_onMouseMove.call(this, event);
-  this._mouseOverX = Graphics.pageToCanvasX(event.pageX);
-  this._mouseOverY = Graphics.pageToCanvasY(event.pageY);
-};
 
 
 /* Database Manager Alias Functions */
@@ -573,13 +259,16 @@ DataManager.isDatabaseLoaded = function(){
 };
 
 DataManager.loadMCraftingNoteTags = function(){
-	$dataClasses = this.processMCraftingNoteTags($dataClasses, "class");
-	$dataSkills = this.processMCraftingNoteTags($dataSkills, "skill");
-	$dataItems = this.processMCraftingNoteTags($dataItems, "item");
+	let magicCraftData = LMPGamesCore.pluginData.magicCrafting;
+	magicCraftData.classData = this.processMCraftingNoteTags($dataClasses, "class");
+	magicCraftData.skillData = this.processMCraftingNoteTags($dataSkills, "skill");
+	magicCraftData.itemData = this.processMCraftingNoteTags($dataItems, "item");
 };
 
 DataManager.processMCraftingNoteTags = function(dataObj, typ){
+	let returnObject = [];
 	for(let obj of dataObj){
+		returnObject[obj.id] = {};
 		if (obj){
 			if (obj.note != undefined && obj.note != ""){
 				let noteData = obj.note.split(/[\r\n]+/);
@@ -589,73 +278,94 @@ DataManager.processMCraftingNoteTags = function(dataObj, typ){
 					let bEndMCraftingTag = false;
 
 					if (typ == "class"){
-						obj["MaxCatalysts"] = 0;
-						obj["MaxComponents"] = 0;
+						returnObject[obj.id]["CanLearnMagic"] = false;
+						returnObject[obj.id]["MaxCatalysts"] = 0;
+						returnObject[obj.id]["MaxComponents"] = 0;
 					} else if (typ == "skill"){
-						obj["ComponentElements"] = [];
-						obj["ValidClasses"] = [];
-						obj["CanCraft"] = false;
-						obj["CraftingShowName"] = false;
-						obj["IsRecipe"] = false;
-						obj["Obfuscated"] = (craftingDisplayMode == 1 ? true : false);
-						obj["baseSkillId"] = 0;
-						obj["TimesCrafted"] = 0;
-						obj["GoldBaseCost"] = 0,
-						obj["ItemBaseCost"] = 0
+						returnObject[obj.id]["ClassIds"] = [];
+						returnObject[obj.id]["CurrencyBaseCost"] = 0;
+						returnObject[obj.id]["CurrencyBaseFactor"] = 0.0
+						returnObject[obj.id]["ItemBaseCost"] = 0;
+						returnObject[obj.id]["ItemBaseFactor"] = 0.0;
+						returnObject[obj.id]["ComponentElements"] = [];
+						returnObject[obj.id]["ValidClasses"] = [];
+						returnObject[obj.id]["CanCraft"] = false;
+						returnObject[obj.id]["CraftingShowName"] = false;
+						returnObject[obj.id]["IsRecipe"] = false;
+						returnObject[obj.id]["Obfuscated"] = (craftingDisplayMode == 1 ? true : false);
+						returnObject[obj.id]["baseSkillId"] = 0;
+						returnObject[obj.id]["TimesCrafted"] = 0;
+						returnObject[obj.id]["GoldBaseCost"] = 0,
+						returnObject[obj.id]["ItemBaseCost"] = 0
 					} else if (typ == "item"){
-						obj["IsCatalyst"] = false;
-						obj["CraftingEffects"] = [];
+						returnObject[obj.id]["IsCatalyst"] = false;
+						returnObject[obj.id]["CraftingEffects"] = [];
+						returnObject[obj.id]["CurrencyBaseCost"] = 0;
+						returnObject[obj.id]["CurrencyBaseFactor"] = 0.0
+						returnObject[obj.id]["ItemBaseCost"] = 0;
+						returnObject[obj.id]["ItemBaseFactor"] = 0.0;
 					}
 
 					for (let noteLine of noteData){
 						switch (noteLine){
-							case '<MagicCrafting>':
+							case '<LMP_MagicCrafting>':
 								bStartMCraftingTag = true;
 								break;
-							case '</MagicCrafting>':
+							case '</LMP_MagicCrafting>':
 								bEndMCraftingTag = true;
 								break;
 							default:
 								if (bStartMCraftingTag){
 									let noteLines = noteLine.split(":");
-									if (noteLines[0] == 'MaxCatalysts'){ //Classes
-										obj.MaxCatalysts = parseInt(noteLines[1]);
-									} else if (noteLines[0] == "MaxComponents"){
-										obj.MaxComponents = parseInt(noteLines[1]);
-									} else if (noteLines[0] == "MCCatalyst"){ //Items
-										obj.IsCatalyst = true;
-									} else if (noteLines[0] == "Effects"){
+									if (noteLines[0] == 'MaxCatalysts') { //Classes
+										returnObject[obj.id].MaxCatalysts = parseInt(noteLines[1]);
+									} else if (noteLines[0] == "MaxComponents") {
+										returnObject[obj.id].MaxComponents = parseInt(noteLines[1]);
+									} else if (noteLines[0] == "CanLearnMagic") {
+										returnObject[obj.id].CanLearnMagic = true;
+									} else if (noteLines[0] == "MCCatalyst") { //Items
+										returnObject[obj.id].IsCatalyst = true;
+									} else if (noteLines[0] == "Effects") {
 										let effectData = noteLines[1].split(";");
 										for (let i1 = 0; i1 < effectData.length; i1++){
 											let effect = effectData[i1].split(",");
 											if (effect[0] == "STATE"){
-												obj.CraftingEffects.push({"Effect":effect[0], "ID":parseInt(effect[1]), "Value1":parseFloat((parseInt(effect[2])/100).toFixed(2)), "Value2":0});
+												returnObject[obj.id].CraftingEffects.push({"Effect":effect[0], "ID":parseInt(effect[1]), "Value1":parseFloat((parseInt(effect[2])/100).toFixed(2)), "Value2":0});
 											} else {
-												obj.CraftingEffects.push({"Effect":effect[0], "Value1":parseFloat((parseInt(effect[1])/100).toFixed(2)), "Value2":0});
+												returnObject[obj.id].CraftingEffects.push({"Effect":effect[0], "Value1":parseFloat((parseInt(effect[1])/100).toFixed(2)), "Value2":0});
 											}
 										}
 									} else if (noteLines[0] == 'ComponentElements'){ //Skills
-										let noteLines = noteLine.split(":");
 										let listData = noteLines[1].split(",");
 
 										for (let i1 = 0; i1< listData.length; i1++){
-											obj.ComponentElements.push(parseInt(listData[i1]));
+											returnObject[obj.id].ComponentElements.push(parseInt(listData[i1]));
 										}
 									} else if (noteLines[0] == 'ValidClasses'){
-										let noteLines = noteLine.split(":");
 										let listData = noteLines[1].split(",");
 
 										for (let i1 = 0; i1< listData.length; i1++){
-											obj.ValidClasses.push(parseInt(listData[i1]));
+											returnObject[obj.id].ValidClasses.push(parseInt(listData[i1]));
 										}
 									} else if (noteLines[0] == "CanCraft"){
-										obj.CanCraft = true;
+										returnObject[obj.id].CanCraft = true;
 									} else if (noteLines[0] == "IsRecipe"){
-										obj.IsRecipe = true;
-									} else  if (noteLines[0] == "GoldBaseCost"){
-										obj.GoldBaseCost = parseInt(noteLines[1]);
+										returnObject[obj.id].IsRecipe = true;
+									} else if (noteLines[0] == "ClassIds"){
+										let classIdData = noteLines[1];
+										let parsedClassIdData = classIdData.split(",");
+
+										for (let id of parsedClassIdData){
+											returnObject[obj.id].ClassIds.push(parseInt(id));
+										}
+									} else  if (noteLines[0] == "CurrencyBaseCost"){ //Common
+										returnObject[obj.id].GoldBaseCost = parseInt(noteLines[1]);
 									} else if (noteLines[0] == "ItemBaseCost"){
-										obj.ItemBaseCost = parseInt(noteLines[1]);
+										returnObject[obj.id].ItemBaseCost = parseInt(noteLines[1]);
+									} else  if (noteLines[0] == "CurrencyBaseFactor"){
+										returnObject[obj.id].GoldBaseCost = parseFloat(noteLines[1]);
+									} else if (noteLines[0] == "ItemBaseFactor"){
+										returnObject[obj.id].ItemBaseCost = parseFloat(noteLines[1]);
 									}
 								}
 
@@ -668,12 +378,10 @@ DataManager.processMCraftingNoteTags = function(dataObj, typ){
 					}
 				}
 			}
-
-			dataObj[obj.id] = obj;
 		}
 	}
 
-	return dataObj;
+	return returnObject;
 }
 
 
@@ -712,11 +420,11 @@ Game_Interpreter.prototype.pluginCommand = function(command, args){
 }
 
 Game_Interpreter.prototype.setSkillCraftable = function(skillId){
-	$dataSkills.find(sk => sk && sk.id == skillId).CanCraft = true;
+	LMPGamesCore.pluginData.magicCrafting.skillData.find(sk => sk && sk.id == skillId).CanCraft = true;
 }
 
 Game_Interpreter.prototype.setSkillUncraftable = function(skillId){
-	$dataSkills.find(sk => sk && sk.id == skillId).CanCraft = false;
+	LMPGamesCore.pluginData.magicCrafting.skillData.find(sk => sk && sk.id == skillId).CanCraft = false;
 }
 
 /* Scene_MagicCrafting Functions */
@@ -725,6 +433,8 @@ Scene_MagicCrafting.prototype.constructor = Scene_MagicCrafting;
 
 Scene_MagicCrafting.prototype.initialize = function(){
 	Scene_MenuBase.prototype.initialize.call(this);
+	LMPGamesCore.functions.enableWindowScrolling(true);
+
 	this._craftPaletteWnd = undefined;
 	this._craftCmpSelectionWnd = undefined;
 	this._craftCatSelectionWid = undefined;
@@ -765,6 +475,7 @@ Scene_MagicCrafting.prototype.create = function(){
 Scene_MagicCrafting.prototype.createWindows = function(){
 	this.createHelpWindow();
 	this.createInfoWindow();
+	this.createCostWindow();
 	this.createPaletteWindow();
 	this.createCmpSelectionWindow();
 	this.createCatSelectionWindow();
@@ -825,7 +536,11 @@ Scene_MagicCrafting.prototype.paletteOkProcessing = function(){
 	}
 }
 
-Scene_MagicCrafting.prototype.paletteCancelProcessing = function() { SceneManager.pop(); }
+Scene_MagicCrafting.prototype.paletteCancelProcessing = function() {
+	LMPGamesCore.functions.enableWindowScrolling(false);
+	SceneManager.pop();
+}
+
 Scene_MagicCrafting.prototype.createCmpSelectionWindow = function(){
 	let x = 0;
 	let y = this._helpWindow.height + 10;
@@ -848,6 +563,8 @@ Scene_MagicCrafting.prototype.selectedComponent = function(){
 	this._craftPaletteWnd.updateSelectedComponents(this._selectedComponents);
 	this._craftInfoWnd.setMode(0);
 	this._craftInfoWnd.updateSelectedComponents(this._selectedComponents);
+
+	this._craftCostWnd.updateComponents(this._selectedComponents);
 
 	this._craftCmpSelectionWnd.hide();
 	this._craftCmpSelectionWnd.deselect();
@@ -893,6 +610,8 @@ Scene_MagicCrafting.prototype.selectedCatalyst = function(){
 	this._craftPaletteWnd.updateSelectedCatalysts(this._selectedCatalysts);
 	this._craftInfoWnd.updateSelectedCatalysts(this._selectedCatalysts);
 
+	this._craftCostWnd.updateCatalysts(this._selectedCatalysts);
+
 	this._craftCatSelectionWnd.hide();
 	this._craftCatSelectionWnd.deselect();
 	this._craftCatSelectionWnd.deactivate();
@@ -921,7 +640,7 @@ Scene_MagicCrafting.prototype.createBlueprintListWindow = function(){
 	let w = 300;
 	let h = 180;
 
-	this._craftBlueprintListWnd = new Window_CraftBlueprintList(x, y, w, h, this._craftInfoWnd, this._selectedComponents);
+	this._craftBlueprintListWnd = new Window_CraftBlueprintList(x, y, w, h, this._craftInfoWnd, this._selectedComponents, this._craftCostWnd);
 	this._craftBlueprintListWnd.setHandler('ok', this.spellBlueprintSelected.bind(this));
 	this._craftBlueprintListWnd.setHandler('cancel', this.blueprintCancelProcessing.bind(this));
 	this._craftBlueprintListWnd.hide();
@@ -953,9 +672,20 @@ Scene_MagicCrafting.prototype.blueprintCancelProcessing = function() {
 	this._craftPaletteWnd.select(0);
 }
 
+Scene_MagicCrafting.prototype.createCostWindow = function(){
+	let x = this._craftPaletteWnd.getWidth() + 10;
+	let y = this._craftInfoWnd.getHeight() + this._helpWindow.getHeight() + 20;
+	let width = this._craftInfoWnd.getWidth();
+	let height = 115;
+
+	this._craftCostWnd = new Window_CraftCost(x, y, width, height);
+	this._craftCostWnd.show();
+	this.addWindow(this._craftCostWnd);
+}
+
 Scene_MagicCrafting.prototype.createCommandWindow = function(){
 	let x = this._craftPaletteWnd.getWidth() + 10;
-	let y = this._craftInfoWnd.getHeight() + this._helpWindow.height + 120;
+	let y = this._craftInfoWnd.getHeight() + this._craftCostWnd.getHeight() + this._helpWindow.getHeight() + 30;
 	let w = this._craftInfoWnd.getWidth();
 	let h = 60;
 
@@ -1006,20 +736,25 @@ Scene_MagicCrafting.prototype.unlockSpell = function(){
 	catalystItems = getCatalystData(catIds);
 	newSkillInst.damage.formula = processFormula(newSkillInst, componentSkills, catalystItems);
 	newSkillInst.effects = newSkillInst.effects.concat(processNewEffects(newSkillInst, catalystItems));
-	newSkillInst.CraftingShowName = false;
-	newSkillInst.BaseSkillId = (!bPreventRename ? this._selectedBaseId : (baseSkill.id < startId ? this._selectedBaseId : newSkillInst.BaseSkillId));
-	newSkillInst.CanLearn = true;
-	newSkillInst.IsRecipe = false;
-	newSkillInst.CanCraft = false;
 
-	baseSkill.CraftingShowName = (!bPreventRename ? true : (baseSkill.id < startId ? true : false));
-	baseSkill.Obfuscated = false;
+	let pluginData = LMPGamesCore.pluginData.magicCrafting;
+	pluginData.skillData[newSkillInst.id] = {
+		CraftingShowName: false,
+		BaseSkillId: (!bPreventRename ? this._selectedBaseId : (baseSkill.id < startId ? this._selectedBaseId : newSkillInst.BaseSkillId)),
+		CanLearn: true,
+		IsRecipe: false,
+		CanCraft: false
+	};
+
+	pluginData.skillData[baseSkill.id].CraftingShowName = (!bPreventRename ? true : (baseSkill.id < startId ? true : false));
+	pluginData.skillData[baseSkill.id].Obfuscated = false;
 
 	$newSkillInstance = newSkillInst;
 
 	//Magic Schools handling
 	//Future: Possibly add in code to allow crafting to work w/o Magic Schools plugin
-	let schools = Object.values($magicSchoolsData);
+	let magicSchoolData = LMPGamesCore.pluginData.magicSchoolsData;
+	let schools = Object.values(magicSchoolData.schools);
 	let bSkillAdded = false;
 	for (let i1 = 0; i1 < schools.length; i1++){
 		let currSchool = schools[i1];
@@ -1056,10 +791,6 @@ Scene_MagicCrafting.prototype.unlockSpell = function(){
 				break;
 			}
 		}
-
-		if (bSkillAdded){
-			break;
-		}
 	}
 
 	this._selectedComponents = {
@@ -1095,13 +826,13 @@ Scene_MagicCrafting.prototype.unlockSpell = function(){
 				baseSkill = craftBaseSkill;
 			}
 		}
-		if (baseSkill.TimesCrafted > 0){
+		if (pluginData.skillData[baseSkill.id].TimesCrafted > 0){
 			let skillName = baseSkill.name;
-			$newSkillInstance.name = skillName + ' +' + String(baseSkill.TimesCrafted);
+			$newSkillInstance.name = skillName + ' +' + String(pluginData.skillData[baseSkill.id].TimesCrafted);
 		}
 
 		$dataSkills[$newSkillInstance.id] = $newSkillInstance;
-		baseSkill.TimesCrafted++;
+		pluginData.skillData[baseSkill.id].TimesCrafted++;
 	}
 
 	$dataSkills[baseSkill.id] = baseSkill;
@@ -1139,8 +870,8 @@ Window_CraftPalette.prototype.initialize = function(x, y, w, h, helpWnd){
 
 	let actClsId = this._craftingActor._classId;
 
-	this._numOfComponents = $dataClasses[actClsId].MaxComponents;
-	this._numOfCatalysts = $dataClasses[actClsId].MaxCatalysts;
+	this._numOfComponents = LMPGamesCore.pluginData.magicCrafting.classData[actClsId].MaxComponents;
+	this._numOfCatalysts = LMPGamesCore.pluginData.magicCrafting.classData[actClsId].MaxCatalysts;
 
 	this._currentCmp = "";
 	this._currentCat = "";
@@ -1288,10 +1019,10 @@ Window_CraftPalette.prototype.buildComList = function(){
 
 Window_CraftPalette.prototype.processCursorMove = function() {
 	let bResetSelect = false;
-    if (this.isCursorMovable()) {
-        var lastIndex = this.index();
+	if (this.isCursorMovable()) {
+		var lastIndex = this.index();
 
-        if (Input.isRepeated('down')) {
+		if (Input.isRepeated('down')) {
 			if (this._totalIndex + 1 > this._totalItems){
 				this._totalIndex = 0;
 			}
@@ -1299,12 +1030,12 @@ Window_CraftPalette.prototype.processCursorMove = function() {
 			this._totalIndex++;
 
 			bResetSelect = this.setIndexPage();
-            this.cursorDown(Input.isTriggered('down'));
+			this.cursorDown(Input.isTriggered('down'));
 			if (bResetSelect){
 				this.resetSelect("down");
 				bResetSelect = false;
 			}
-        } else if (Input.isRepeated('up')) {
+		} else if (Input.isRepeated('up')) {
 			if (this._totalIndex - 1 < 1){
 				this._totalIndex = this._totalItems;
 			} else {
@@ -1312,26 +1043,26 @@ Window_CraftPalette.prototype.processCursorMove = function() {
 			}
 
 			bResetSelect = this.setIndexPage();
-            this.cursorUp(Input.isTriggered('up'));
+			this.cursorUp(Input.isTriggered('up'));
 
 			if (bResetSelect){
 				this.resetSelect("up");
 				bResetSelect = false;
 			}
-        } else if (Input.isRepeated('right')) {
-            this.cursorRight(Input.isTriggered('right'));
-        } else if (Input.isRepeated('left')) {
-            this.cursorLeft(Input.isTriggered('left'));
-        } else if (!this.isHandled('pagedown') && Input.isTriggered('pagedown')) {
-            this.cursorPagedown();
-        } else if (!this.isHandled('pageup') && Input.isTriggered('pageup')) {
-            this.cursorPageup();
-        }
+		} else if (Input.isRepeated('right')) {
+			this.cursorRight(Input.isTriggered('right'));
+		} else if (Input.isRepeated('left')) {
+			this.cursorLeft(Input.isTriggered('left'));
+		} else if (!this.isHandled('pagedown') && Input.isTriggered('pagedown')) {
+			this.cursorPagedown();
+		} else if (!this.isHandled('pageup') && Input.isTriggered('pageup')) {
+			this.cursorPageup();
+		}
 
-        if (this.index() !== lastIndex) {
-            SoundManager.playCursor();
-        }
-    }
+		if (this.index() !== lastIndex) {
+			SoundManager.playCursor();
+		}
+	}
 };
 
 Window_CraftPalette.prototype.setIndexPage = function(lastIndex, direction){
@@ -1796,7 +1527,14 @@ Window_CraftCatalystSelection.prototype.buildComList = function(){
 
 	let partyInvItems = $gameParty._items;
 	let invItemData = $dataItems.filter(itm => itm && partyInvItems.hasOwnProperty(itm.id));
-	let craftingItmData = invItemData.filter(itm => itm.IsCatalyst == true);
+	let craftingItmData = [];
+	for (let itm of invItemData){
+		let pluginData = LMPGamesCore.pluginData.magicCrafting;
+		let pluginDataItem = pluginData.itemData.find(pdi => pdi && pdi.id == itm.id && pdi.IsCatalyst);
+		if (pluginDataItem){
+			craftingItmData.push(itm);
+		}
+	}
 
 	let invCraftingItems = {};
 	for (let itm of craftingItmData){
@@ -2080,7 +1818,7 @@ Window_CraftCatalystSelection.prototype.bCanUse = function(label){
 Window_CraftBlueprintList.prototype = Object.create(Window_Selectable.prototype);
 Window_CraftBlueprintList.prototype.constructor = Window_CraftBlueprintList;
 
-Window_CraftBlueprintList.prototype.initialize = function(x, y, w, h, infoWnd, selectedComponents){
+Window_CraftBlueprintList.prototype.initialize = function(x, y, w, h, infoWnd, selectedComponents, costWnd){
 	this._width = w;
 	this._height = h;
 	this._x = x;
@@ -2093,8 +1831,10 @@ Window_CraftBlueprintList.prototype.initialize = function(x, y, w, h, infoWnd, s
 	this._baseSkillIdList = [];
 	this._intBaseSkillIdList = [];
 	this._infoWnd = infoWnd;
+	this._costWnd = costWnd;
 	this._selectedComponents = selectedComponents;
 	this._selectedBaseId = 0;
+	this._bCanCraft = false;
 
 	Window_Selectable.prototype.initialize.call(this, x, y, w, h);
 	this.buildComList();
@@ -2108,6 +1848,46 @@ Window_CraftBlueprintList.prototype.updateSelectedComponents = function (selCmps
 	this.refresh();
 }
 
+Window_CraftBlueprintList.prototype.drawItem = function(index){
+	let rect = this.itemRectForText(index);
+	let x = rect.width/2;
+	let y = rect.y + (rect.height/2) - this.lineHeight() * 0.5;
+	let w = rect.width - this.textPadding();
+	let bCanCraft = false;
+	let itemCost = 0;
+	let goldCost = 0;
+	let currentGold = $gameParty.gold();
+	let currentPrtyItems = 0;
+
+	if (index != -1 && this._comList[this._pageIndex][index] != 'Cancel') {
+		let currentSkillId = this._baseskillIdList[this._pageIndex][index];
+		this._costWnd.setSelectedBaseSpellId(currentSkillId);
+		if (bEnableCurrencyCostSystem) {
+			goldCost = this._costWnd.getGoldCost();
+		}
+
+		if (bEnableItemCostSystem) {
+			let costItemId = this._costWnd.getCostItemId();
+			let itemData = $dataItems.find(itm => itm && itm.id == costItemId);
+			if (itemData) {
+				currentPrtyItems = $gameParty.numItems(itemData);
+				itemCost = this._costWnd.getItemCost();
+			} else {
+				//error handling
+			}
+		}
+
+		if ((!bEnableCurrencyCostSystem || (bEnableCurrencyCostSystem && goldCost <= currentGold)) &&
+			(!bEnableItemCostSystem || (bEnableItemCostSystem && itemCost <= currentPrtyItems)))
+		{
+			bCanCraft = true;
+		}
+	}
+
+	this.changePaintOpacity(bCanCraft);
+	this.drawText(this._comList[this._pageIndex][index], rect.x, y, w , 'center');
+}
+
 Window_CraftBlueprintList.prototype.buildComList = function(){
 	this._comList = [];
 	this._intComList = [];
@@ -2115,7 +1895,14 @@ Window_CraftBlueprintList.prototype.buildComList = function(){
 	this._baseSkillIdList = [];
 	this._intBaseSkillIdList = [];
 
-	let craftableSpells = $dataSkills.filter(skl => skl && skl.CanCraft && skl.IsRecipe && (bPreventRename && (maxRefineLevel == 0 || (maxRefineLevel > skl.TimesCrafted)) ? true : false));
+	let pluginData = LMPGamesCore.pluginData.magicCrafting;
+	let pluginDataSkills = pluginData.skillData.filter(skl => skl && skl.CanCraft && skl.IsRecipe && (bPreventRename && (maxRefineLevel == 0 || (maxRefineLevel > skl.TimesCrafted)) ? true : false));
+	let pluginDataSkillIds = [];
+	for (let skill of pluginDataSkills){
+		pluginDataSkillIds.push(skill.id);
+	}
+
+	let craftableSpells = $dataSkills.filter(skl => skl && pluginDataSkillIds.contains(skl.id));
 	let displaySpells = [];
 	let selectedCmpIds = Object.values(this._selectedComponents);
 	let selectedElements = selectedCmpIds.filter(sk => sk)
@@ -2127,22 +1914,29 @@ Window_CraftBlueprintList.prototype.buildComList = function(){
 		}, []);
 
 	for (let spell of craftableSpells){
-		if (spell.ComponentElements.length > 0){
-			if (this.meetsComponentRequirements(spell.ComponentElements, selectedElements)){
+		let spellPluginData = pluginData.skillData[spell.id];
+		if (spellPluginData.ComponentElements.length > 0){
+			if (this.meetsComponentRequirements(spellPluginData.ComponentElements, selectedElements)){
 				displaySpells.push(spell);
 			}
 		}
 	}
 
+	if (craftingDisplayMode == 1){
+		LMPGamesCore.functions.setObfuscationChar(obfuscationChar);
+		LMPGamesCore.functions.setMaxObfuscationChars(maxObfusChars);
+	}
+
 	for (let i1 = 0; i1 < displaySpells.length; i1++){
 		let spell = displaySpells[i1];
+		let spellPluginData = pluginData.skillData[spell.id];
 		let name = spell.name;
 
-		if (!spell.CraftingShowName){
+		if (!spellPluginData.CraftingShowName){
 			let newSkillName = "";
 
 			if (craftingDisplayMode == 1){
-				newSkillName = obfuscateData(name);
+				newSkillName = LMPGames.functions.obfuscateText(name);
 			} else {
 				newSkillName = name;
 			}
@@ -2324,29 +2118,45 @@ Window_CraftBlueprintList.prototype.itemWidth = function() {
                    this.spacing()) / this.maxCols() - this.spacing());
 }
 
-Window_CraftBlueprintList.prototype.drawItem = function(index){
-	let rect = this.itemRectForText(index);
-	let x = rect.width/2;
-	let y = rect.y + (rect.height/2) - this.lineHeight() * 0.5;
-	let w = rect.width - this.textPadding();
-
-	/*if (this._index == this.bottomRow()){
-			index = this._index + 1;
-	}*/
-
-	this.drawText(this._comList[this._pageIndex][index], rect.x, y, w , 'center');
-}
-
 Window_CraftBlueprintList.prototype.select = function(index){
 	this._index = index;
-	if (this._comList.length > 0 && this._comList[this._pageIndex].length > 0){
-		if (index > -1 && index != this._comList[this._pageIndex].length && this._comList[this._pageIndex][index] != "Cancel"){
+	let itemCost = 0;
+	let goldCost = 0;
+	let currentGold = $gameParty.gold();
+	let currentPrtyItems = 0;
+
+	if (this._comList.length > 0 && this._comList[this._pageIndex].length > 0) {
+		if (index > -1 && index != this._comList[this._pageIndex].length && this._comList[this._pageIndex][index] != "Cancel") {
 			this._selectedBaseId = this._baseSkillIdList[this._pageIndex][index];
-			if (this._infoWnd !== undefined){
+			if (this._infoWnd !== undefined) {
 				this._infoWnd.setSelectedBaseSpell(this._selectedBaseId);
 			}
+
+			if (this._costWnd !== undefined) {
+				this._costWnd.setSelectedBaseSpellId(this._selectedBaseId);
+				if (bEnableCurrencyCostSystem){
+					goldCost = this._costWnd.getGoldCost();
+				}
+
+				if (bEnableItemCostSystem){
+					let costItemId = this._costWnd.getCostItemId();
+					let itemData = $dataItems.find(itm => itm && itm.id == costItemId);
+					if (itemData){
+						itemCost = this._costWnd.getItemCost();
+						currentPrtyItems = $gameParty.numItems(itemData);
+					}
+				}
+
+				if ((!bEnableCurrencyCostSystem || (bEnableCurrencyCostSystem && goldCost <= currentGold)) &&
+					(!bEnableItemCostSystem || (bEnableItemCostSystem && itemCost <= currentPrtyItems)))
+				{
+					this._bCanCraft = true;
+				} else {
+					this._bCanCraft = false;
+				}
+			}
 		} else {
-			if (this._infoWnd !== undefined){
+			if (this._infoWnd !== undefined) {
 				this._infoWnd.setSelectedBaseSpell(-1);
 			}
 		}
@@ -2363,7 +2173,11 @@ Window_CraftBlueprintList.prototype.processOk = function(){
 		if (this._comList[this._pageIndex][this._index] !== "Cancel"){
 			this._selectedBaseId = this._baseSkillIdList[this._pageIndex][this._index];
 			this._infoWnd.setSelectedBaseSpell(this._selectedBaseId);
-			Window_Selectable.prototype.processOk.apply(this);
+			if ((bEnableCurrencyCostSystem || bEnableItemCostSystem) && this._bCanCraft){
+				Window_Selectable.prototype.processOk.apply(this);
+			} else {
+				SoundManager.playCancel();
+			}
 		} else {
 			Window_Selectable.prototype.processCancel.apply(this);
 		}
@@ -2408,7 +2222,7 @@ Window_CraftInfo.prototype.initialize = function(x, y, w, h){
 	this._selectedCatalysts = {};
 	this._curComponent = 0;
 	this._curCatalyst = 0;
-	this._curBaseSpell = 0;
+	this._curBaseSpellId = 0;
 	this._countdown = 0;
   	this._arrowBlinkTimer = 0;
   	this._lineHeight = this.lineHeight();
@@ -2445,7 +2259,7 @@ Window_CraftInfo.prototype.setSelectedCatalyst = function(selCat) {
 }
 
 Window_CraftInfo.prototype.setSelectedBaseSpell = function(selBase){
-	this._curBaseSpell = selBase;
+	this._curBaseSpellId = selBase;
 	this.refresh();
 }
 
@@ -2686,8 +2500,8 @@ Window_CraftInfo.prototype.baseSpellInfo = function(){
 	let totalText = "";
 
 	fmt = JSON.parse(bpTxFmt || '');
-	if (fmt && this._curBaseSpell > 0) {
-		let currSkill = $dataSkills.find(sk => sk && sk.id == this._curBaseSpell);
+	if (fmt && this._curBaseSpellId > 0) {
+		let currSkill = $dataSkills.find(sk => sk && sk.id == this._curBaseSpellId);
 		let miscSkInfo = "";
 		let invSkInfo = "";
 		let dmgSkInfo = "";
@@ -2865,8 +2679,8 @@ Window_CraftInfo.prototype.baseSpellInfo = function(){
 		}
 
 		if (!hasNoEffects(currSkill.effects)){
-			let processedEffects = buildEffectList(currSkill.effects);
-			effSkInfo = this.generateEffectStr(processedEffects, currSkill.Obfuscated);
+			let processedEffects = LMPGamesCore.functions.buildEffectList(currSkill.effects);
+			effSkInfo = LMPGamesCore.functions.generateEffectStr(processedEffects, currSkill.Obfuscated);
 		}
 
 
@@ -2908,10 +2722,10 @@ Window_CraftInfo.prototype.finalSpellInfo = function(){
 	let totalText = "";
 
 	fmt = JSON.parse(bpTxFmt || '');
-	if (fmt && this._curBaseSpell > 0) {
+	if (fmt && this._curBaseSpellId > 0) {
 		let name = "";
 		let desc = "";
-		let skillData = $dataSkills.find(sk => sk && sk.id == this._curBaseSpell);
+		let skillData = $dataSkills.find(sk => sk && sk.id == this._curBaseSpellId);
 		let currSkill = JSON.parse(JSON.stringify(skillData));
 		let miscSkInfo = "";
 		let invSkInfo = "";
@@ -3388,6 +3202,194 @@ Window_CraftInfo.prototype.processWheel = function() {
 };
 
 
+/* Window_CraftCost Functions */
+Window_CraftCost.protoytpe = Object.create(Window_Selectable.protoype);
+Window_CraftCost.prototype.constructor = Window_CraftCost;
+Window_CraftCost.prototype.initialize = function(x, y, width, height){
+	this._width = width;
+	this._height = height;
+	this._xPos = x;
+	this._yPos = y;
+	this._selectedComponents = {};
+	this._selectedCatalysts = {};
+	this._allTextHeight = 0;
+	this._goldCost = 0;
+	this._itemCost = 0;
+	this._costItemId = 0;
+
+	Window_Selectable.prototype.initialize.call(this, x, y, width, height);
+}
+
+Window_CraftCost.prototype.getWidth = function() { return this._width; }
+Window_CraftCost.prototype.getHeight = function() { return this._height; }
+Window_CraftCost.prototype.getGoldCost = function() { return this._goldCost; }
+Window_CraftCost.prototype.getItemCost = function() { return this._itemCost; }
+Window_CraftCost.prototype.getCostItemId = function() { return this._costItemId; }
+Window_CraftCost.prototype.updateComponents = function(selectedComponents){
+	this._selectedComponents = selectedComponents;
+	this.refresh();
+}
+
+Window_CraftCost.prototoype.updateCatalysts = function(selectedCatalysts){
+	this._selectedCatalysts = selectedCatalysts;
+	this.refresh();
+}
+
+Window_CraftCost.prototype.setSelectedSpellId = function(skId){
+	this._selectedBaseSpellId = skId;
+	this.refresh();
+}
+
+Window_CraftCost.prototype.refresh = function(){
+	this.contents.clear();
+	this.drawCostInfo();
+}
+
+Window_CraftCost.prototype.drawCostInfo = function(){
+	let skLvl = 1;
+	let numComp = 1;
+	let numCat =  1;
+	let baseCost = 1;
+	let baseFactor = 1.0;
+	let finalBaseCost = 0;
+	let finalBaseFactor = 0.0;
+	let pluginData = LMPGamesCore.pluginData.magicCrafting;
+
+	for (let key of Object.keys(this._selectedComponents)) {
+		if (this._selectedComponents[key] != 0) {
+			numComp++;
+		}
+
+		let skillPluginData = pluginData.skillData.find(sk => sk && sk.id == this._selectedComponents[key]);
+		if (skillPluginData) {
+			if (skillPluginData.hasOwnProperty('CurrencyBaseCost')) {
+				finalBaseCost += parseInt(skillPluginData.CurrencyBaseCost);
+			}
+
+			if (skillPluginData.hasOwnProperty('CurrencyBaseFactor')) {
+				finalBaseFactor += parseFloat(skillPlugData.CurrencyBaseFactor);
+			}
+		}
+	}
+
+	for (let key of Object.keys(this._selectedCatalysts)) {
+		if (this._selectedCatalysts[key] != 0) {
+			numCat++;
+		}
+
+		let itemPluginData = pluginData.itemData.find(sk => sk && sk.id == this._selectedCatalysts[key]);
+		if (itemPluginData) {
+			if (itemPluginData.hasOwnProperty('CurrencyBaseCost')) {
+				finalBaseCost += parseInt(itemPluginData.CurrencyBaseCost);
+			}
+
+			if (itemPluginData.hasOwnProperty('CurrencyBaseFactor')) {
+				finalBaseFactor += parseFloat(itemPluginData.CurrencyBaseFactor);
+			}
+		}
+	}
+
+	if (this._selectedBaseSpellId != undefined || this._selectedBaseSpellId != 0) {
+		let selectedSkill = $dataSkills.find(sk => sk && sk.id == this._selectedBaseSpellId);
+		if (selectedSkill) {
+			skLvl = selectedSkill.level;
+		}
+
+		let skillPluginData = pluginData.skillData.find(sk => sk && sk.id == this._selectedBaseSpellId);
+		if (skillPluginData) {
+			if (skillPluginData.hasOwnProperty('CurrencyBaseCost')) {
+				finalBaseCost += parseInt(skillPluginData.CurrencyBaseCost);
+			}
+
+			if (skillPluginData.hasOwnProperty('CurrencyBaseFactor')) {
+				finalBaseFactor += parseFloat(skillPlugData.CurrencyBaseFactor);
+			}
+		}
+	}
+
+	if (bEnableGoldCost) {
+		this._goldCost = eval(currencyCostFormula);
+	}
+
+	if (bEnableItemCost) {
+		this._itemCost = eval(itemCostFormula);
+	}
+
+	let fmt = JSON.parse(paletteTxFmt) || undefined;
+	if (fmt){
+		let ttl = "Cost Requirements";
+		let costString = "";
+		let bEnableWordwrap = fmt.match(/<(?:WordWrap)>/i);;
+		let text = undefined;
+		let finalText = undefined;
+		let textState = undefined;
+		let totalText = "";
+
+		let halfWndW = this._width / 2;
+		this.contents.fontSize = 26;
+		let ttlLen = this.contents.measureTextWidth(ttl);
+		let ttlPos = Math.floor(halfWndW - (ttlLen/1.5));
+		let header = "";
+
+		ttlPos = Math.floor((ttl.length < 10 ? ttlPos - (10 + (ttl.length/2)) : ttlPos + (ttl.length/2)));
+		ttl = LMPGamesCore.functions.addXShift(ttl, ttlPos);
+		ttl = LMPGamesCore.functions.changeFontSize(ttl, 26);
+		ttl = LMPGamesCore.functions.addBreak(ttl, 'end');
+		ttl = LMPGamesCore.functions.addBreak(ttl, 'end');
+
+		let currencyCostString = "";
+		if (bEnableCurrencyCostSystem){
+			currencyCostString = TextManager.currencyUnit + ": " + String(goldCost);
+			currencyCostString = LMPGamesCore.functions.addXShift(currencyCostString, 5);
+			costString = currencyCostString;
+		}
+
+		let itemCostPos = 5;
+		let itemCostString = "";
+		if (bEnableItemCostSystem){
+			let finalCostItemId = 0;
+			if (this._selectedBaseSpellId > 0) {
+				let pluginSkillData = LMPGamesCore.pluginData.magicCrafting.skillData.find(skl => skl && skl.id == this._selectedBasespellId);
+				if (pluginSkillData && pluginSkillData.hasOwnProperty("CostItemId")) {
+					finalCostItemId = pluginSkillData.CostItemId;
+				}
+			} else {
+				finalCostItemId = costItemId;
+			}
+
+			this._costItemId = finalCostItemId;
+			let selectedCostItemData = $dataItems.find(itm => itm && itm.id == finalCostItemId);
+			if (selectedCostItemData) {
+				itemCostString = "\\i[" + selectedCostItemData.iconIndex + "] " + selectedCostItemData.name + " x" + String(itemCost);
+				
+				if (bEnableCurrencyCostSystem) {
+					this.contents.fontSize = 24;
+					let textWidth = this.contents.measureTextWidth(itemCostString) + 12;
+					let wndWidth = this._width;
+					itemCostPos = (wndWidth - textWidth);
+				}
+
+				itemCostString = LMPGamesCore.functions.addXShift(itemCostString, itemCostPos);
+				costString += itemCostString;
+			}
+		}
+
+		totalText = totalText.concat(ttl, costString, "", "", "", "");
+		text = fmt.format(ttl, costText, "", "", "", "");
+
+		if (totalText.length > 0){
+			textState = { index: 0 };
+			textState.originalText = text;
+			textState.text = this.convertEscapeCharacters(text);
+			let convertedTextHeight = this.calcTextHeight(textState, true);
+			this._allTextHeight = LMPGamesCore.functions.getCalculatedTextHeight(bEnableWordwrap, this._allTextHeight, this._width, text, false);
+			this.createContents();
+			this.drawTextEx(text, 0, 0);
+		}
+	}
+}
+
+
 /* Window_CraftCommand Functions */
 Window_CraftCommand.prototype = Object.create(Window_HorzCommand.prototype);
 Window_CraftCommand.prototype.consutructor = Window_CraftCommand;
@@ -3530,337 +3532,7 @@ Window_MCNameEdit.prototype.refresh = function() {
 };
 
 
-function buildEffectList(effects){
-	var tempObj = {
-		"hpRecov" : [],
-		"mpRecov" : [],
-		"tpRecov": [],
-		"states" : [],
-		"parms" : [],
-		"buffs" : [],
-		"rmvbuffs" : [],
-		"rmvdebuffs": [],
-		"growth" : [],
-		"skills" : [],
-		"speceffs" : [],
-		"comevts" : []
-	};
-
-	var hpRecov = [];
-	var mpRecov = [];
-	var tpRecov = [];
-	var states = [];
-	var parms = [];
-	var buffs = [];
-	var rmvbuffs = [];
-	var rmvdebuffs = [];
-	var growth = [];
-	var skls = [];
-	var speceffs = [];
-	var comevts = [];
-
-	if (effects.length > 0) {effects = orderEffects(effects); }
-
-	for (var i1 = 0; i1 < effects.length; i1++){
-		if (effects[i1].code == 11){ //Recov HP
-			hpRecov.push(effects[i1]);
-		} else if (effects[i1].code == 12){ //Recov MP
-			mpRecov.push(effects[i1]);
-		} else if (effects[i1].code == 13){ //Recov TP
-			tpRecov.push(effects[i1]);
-		} else if (effects[i1].code == 21){ //Add State
-			states.push(effects[i1]);
-		} else if (effects[i1].code == 22){ //Remove State
-			states.push(effects[i1]);
-		}else if (effects[i1].code == 31){ //Add Parm Buff
-			buffs.push(effects[i1]);
-		} else if (effects[i1].code == 32){ //Add Parm Debuff
-			buffs.push(effects[i1]);
-		}else if (effects[i1].code == 33){ //Remove Parm Buff
-			rmvbuffs.push(effects[i1]);
-		} else if (effects[i1].code == 34){ //Remove Parm Debuff
-			rmvdebuffs.push(effects[i1]);
-		} else if (effects[i1].code == 41){ //Spec Eff
-			speceffs.push(effects[i1]);
-		} else if (effects[i1].code == 42){ //Stat Growth
-			growth.push(effects[i1]);
-		} else if (effects[i1].code == 43){ //Learn Skill
-			skls.push(effects[i1]);
-		} else if (effects[i1].code == 44){ //Common Event
-			comevts.push(effects[i1]);
-		}
-	}
-
-	if (hpRecov.length > 0 ) { tempObj = processHpRecov(hpRecov, tempObj); }
-	if (mpRecov.length > 0 ) { tempObj = processMpRecov(mpRecov, tempObj); }
-	if (tpRecov.length > 0 ) { tempObj = processTpRecov(tpRecov, tempObj); }
-	if (states.length > 0 ) { tempObj = processStates(states, tempObj); }
-	if (buffs.length > 0 ) { tempObj = processBuffs(buffs, tempObj); }
-	if (rmvbuffs.length > 0 ) { tempObj = processRmvBuffs(rmvbuffs, tempObj); }
-	if (rmvdebuffs.length > 0 ) { tempObj = processRmvDebuffs(rmvdebuffs, tempObj); }
-	if (speceffs.length > 0 ) { tempObj = processEffSpecEffs(speceffs, tempObj); }
-	if (growth.length > 0 ) { tempObj = processGrowth(growth, tempObj); }
-	if (skls.length > 0 ) { tempObj = processLrnSkils(skls, tempObj); }
-	if (comevts.length > 0 ) { tempObj = processComEvts(comevts, tempObj); }
-
-	return tempObj;
-}
-
-function processHpRecov(hpRecov, tempObj){
-	for (var i1 = 0; i1 < hpRecov.length; i1++){
-		var rPerc = hpRecov[i1].value1;
-		var rInt = hpRecov[i1].value2;
-		var recovStr = "";
-
-		if (rPerc != 0.0){
-			if(Math.sign(rPerc) == 1){
-				recovStr = "\\c[11]+\\c[0] " + (rPerc * 100) + "% of Max HP";
-			} else if (Math.sign(rPerc) == -1){
-				recovStr = "\\c[18]-\\c[0] " + (rPerc * 100) + "% of Max HP";
-			}
-		}
-
-		if (rInt != 0.0){
-			if (recovStr.length > 0){
-				recovStr += " and ";
-			}
-
-			if(Math.sign(rInt) == 1){
-				recovStr += "\\c[11]+\\c[0] " + rInt + " HP";
-			} else if (Math.sign(rInt) == -1){
-				recovStr += "\\c[18]-\\c[0] " + rInt + " HP";
-			}
-		}
-
-		tempObj.hpRecov.push(recovStr);
-	}
-
-	return tempObj;
-}
-
-function processMpRecov(mpRecov, tempObj){
-	for (var i1 = 0; i1 < mpRecov.length; i1++){
-		var rPerc = mpRecov[i1].value1;
-		var rInt = mpRecov[i1].value2;
-		var recovStr = "";
-
-		if (rPerc != 0.0){
-			if(Math.sign(rPerc) == 1){
-				recovStr = "\\c[11]+\\c[0] " + (rPerc * 100) + "% of Max MP";
-			} else if (Math.sign(rPerc) == -1){
-				recovStr = "\\c[18]-\\c[0] " + (rPerc * 100) + "% of Max MP";
-			}
-		}
-
-		if (rInt != 0.0){
-			if (recovStr.length > 0){
-				recovStr += " and ";
-			}
-
-			if(Math.sign(rInt) == 1){
-				recovStr += "\\c[11]+\\c[0] " + rInt + " MP";
-			} else if (Math.sign(rInt) == -1){
-				recovStr += "\\c[18]-\\c[0] " + rInt + " MP";
-			}
-		}
-
-		tempObj.mpRecov.push(recovStr);
-	}
-
-	return tempObj;
-}
-
-function processTpRecov(tpRecov, tempObj){
-	for (var i1 = 0; i1 < tpRecov.length; i1++){
-		var rPerc = tpRecov[i1].value1;
-		var rInt = tpRecov[i1].value2;
-		var recovStr = "";
-
-		if (rPerc != 0.0){
-			if(Math.sign(rPerc) == 1){
-				recovStr = "\\c[11]+\\c[0] " + (rPerc * 100) + "% of Max TP";
-			} else if (Math.sign(rPerc) == -1){
-				recovStr = "\\c[18]-\\c[0] " + (rPerc * 100) + "% of Max TP";
-			}
-		}
-
-		if (rInt != 0.0){
-			if (recovStr.length > 0){
-				recovStr += " and ";
-			}
-
-			if(Math.sign(rInt) == 1){
-				recovStr += "\\c[11]+\\c[0] " + rInt + " TP";
-			} else if (Math.sign(rInt) == -1){
-				recovStr += "\\c[18]-\\c[0] " + rInt + " TP";
-			}
-		}
-
-		tempObj.tpRecov.push(recovStr);
-	}
-
-	return tempObj;
-}
-
-function processStates(effstates, tempObj){
-	for (var i1 = 0; i1 < effstates.length; i1++){
-		if (effstates[i1].dataId > 0) {
-			var stId = effstates[i1].dataId;
-			var st = $dataStates[stId];
-			var stVal = effstates[i1].value1;
-			var stText = "";
-
-			if (effstates[i1].code == 21){
-				stText = "\\c[11]+\\c[0] \\i[" + st.iconIndex + "] " + st.name + " (" + (stVal * 100) + "%)";
-			} else if (effstates[i1].code == 22){
-				stText = "\\c[18]-\\c[0] \\i[" + st.iconIndex + "] " + st.name + " (" + (stVal * 100) + "%)";
-			}
-
-			tempObj.states.push(stText);
-		}
-	}
-
-	return tempObj;
-}
-
-function processBuffs(buffs, tempObj){
-	for (var i1 = 0; i1 < buffs.length; i1++){
-		var parmId = buffs[i1].dataId;
-		var parmName = staticTraits["21"][parmId];
-		var buffVal = buffs[i1].value1;
-		var buffText = "";
-
-		if (buffs[i1].code == 31){
-			buffText = "\\c[11]+\\c[0] " + parmName + " (" + buffVal + " turns)";
-		} else if (buffs[i1].code == 32){
-			buffText = "\\c[18]-\\c[0] " + parmName + " (" + buffVal + " turns)";
-		}
-
-		tempObj.buffs.push(buffText);
-	}
-
-	return tempObj;
-}
-
-function processRmvBuffs(rmvbuffs, tempObj){
-	for (var i1 = 0; i1 < rmvbuffs.length; i1++){
-		var parmId = rmvbuffs[i1].dataId;
-		var parmName = staticTraits["21"][parmId];
-		var rmvbuffText = "";
-
-		rmvbuffText = "\\c[18]-\\c[0] " + parmName;
-
-		tempObj.rmvbuffs.push(rmvbuffText);
-	}
-
-	return tempObj;
-}
-
-function processRmvDebuffs(rmvdebuffs, tempObj){
-	for (var i1 = 0; i1 < rmvdebuffs.length; i1++){
-		var parmId = rmvdebuffs[i1].dataId;
-		var parmName = staticTraits["21"][parmId];
-		var rmvdebuffText = "";
-
-		rmvdebuffText = "\\c[11]+\\c[0] " + parmName;
-
-		tempObj.rmvdebuffs.push(rmvdebuffText);
-	}
-
-	return tempObj;
-}
-
-function processEffSpecEffs(speceffs, tempObj){
-	for (var i1 = 0; i1 < speceffs.length; i1++){
-		var specEffId = speceffs[i1].dataId;
-		var specEffName = specEffLst[specEffId];
-		var specEffText = "";
-
-		specEffText = "\\c[11]+\\c[0] " + specEffName;
-
-		tempObj.speceffs.push(specEffText);
-	}
-
-	return tempObj;
-}
-
-function processGrowth(growth, tempObj){
-	for (var i1 = 0; i1 < growth.length; i1++){
-		var parmId = growth[i1].dataId;
-		var parmName = staticTraits["21"][parmId];
-		var parmIncVal = growth[i1].value1;
-		var growthText = "";
-
-		growthText = parmName + " \\c[11]+" + parmIncVal + "\\c[0]";
-
-		tempObj.growth.push(growthText);
-	}
-
-	return tempObj;
-}
-
-function processLrnSkils(skls, tempObj){
-	for (var i1 = 0; i1 < skls.length; i1++){
-		var skId = skls[i1].dataId;
-		var sk = $dataSkills[skId];
-		var skText = "";
-
-		skText = "\\c[11]+\\c[0] " + sk.name;
-
-		tempObj.skills.push(skText);
-	}
-
-	return tempObj;
-}
-
-function processComEvts(comevts, tempObj){
-	for (var i1 = 0; i1 < comevts.length; i1++){
-		var ceId = comevts[i1].dataId;
-		var ce = $dataCommonEvents[ceId];
-		var comevtText = "";
-
-		comevtText = "Calls CE: " + ce.name;
-
-		tempObj.comevts.push(comevtText);
-	}
-
-	return tempObj;
-}
-
-function orderEffects(effects){
-	for (var i1 = 0; i1 < effects.length; i1++){
-		for (var i2 = 0; i2 < effects.length; i2++){
-			var e1 = effects[i1];
-			var e2 = effects[i2];
-			var storage;
-
-			if (e1.value > e2.value){
-				storage = e1;
-				effects[i1] = e2;
-				effects[i2] = storage;
-			}
-		}
-	}
-
-	return effects;
-}
-
-function hasNoEffects(entryEffects){
-	let isEmpty = true;
-
-	if (entryEffects == undefined || entryEffects == null){
-		return true;
-	}
-
-	for (var k of Object.keys(entryEffects)){
-		if (Object.values(entryEffects[k]).length > 0){
-			isEmpty = false;
-		}
-	}
-
-	return isEmpty;
-}
-
+/* Utility Functions */
 function processFormula(newSkillInst, componentSkills, catalystItems){
 	let baseFormula = newSkillInst.damage.formula;
 	let componentFormulas = [];
@@ -3994,46 +3666,4 @@ function getCatalystData(catIds){
 	}
 
 	return catData;
-}
-
-/* Utility Functions */
-function obfuscateData(text){
-	let obfuscatedData = '';
-	for (let i1 = 0; i1 < text.length; i1++){
-		if (i1 < maxObfusChars){
-			obfuscatedData += obfuscationChar;
-		} else {
-			break;
-		}
-	}
-
-	return obfuscatedData;
-}
-
-function addBreak(text, pos){
-	if (pos == "start"){
-		text = "<br>" + text;
-	} else if (pos == "end"){
-		text += "<br>";
-	} else {
-		text = "<br>" + text + "<br>";
-	}
-
-	return text;
-}
-
-function addXShift(text, shiftAmount){
-	return "\\px[" + String(shiftAmount) +"]" + text;
-}
-
-function addYShift(text, shiftAmount){
-	return "\\py[" + String(shiftAmount) +"]" + text;
-}
-
-function changeFontSize(text, fontSize){
-	return "\\fs[" + String(fontSize) + "]" + text;
-}
-
-function resetFontSize(text){
-	return "\\fr " + text;
 }

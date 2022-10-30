@@ -198,28 +198,26 @@
 var LMPGamesCore = LMPGamesCore || {};
 if (Object.keys(LMPGamesCore).length == 0){
 	//throw error
-	console.log("LMPGames_Core plugin not present OR is not above this plugin.  Loading halted!");
-	return;
+	console.log("LMPGames_Core plugin not present OR is not above this plugin.  Plugin will work incorrectly until this issue is resolved!");
 }
 
-function Window_CraftPalette() { this.initialize.apply(this, arguments); };
-function Window_CraftComponentSelection() { this.initialize.apply(this, arguments); };
-function Window_CraftCatalystSelection() { this.initialize.apply(this, arguments); };
-function Window_CraftBlueprintList() { this.initialize.apply(this, arguments); };
-function Window_CraftInfo() { this.initialize.apply(this, arguments); };
-function Window_CraftCommand() { this.initialize.apply(this, arguments); };
-function Window_CraftGold() { this.initialize.apply(this, arguments); };
-function Window_CraftCost() { this.initialize.apply(this, arguments); };
+function Window_MagicCraftPalette() { this.initialize.apply(this, arguments); };
+function Window_MagicCraftComponentSelection() { this.initialize.apply(this, arguments); };
+function Window_MagicCraftCatalystSelection() { this.initialize.apply(this, arguments); };
+function Window_MagicCraftBlueprintList() { this.initialize.apply(this, arguments); };
+function Window_MagicCraftInfo() { this.initialize.apply(this, arguments); };
+function Window_MagicCraftCommand() { this.initialize.apply(this, arguments); };
+function Window_MagicCraftCost() { this.initialize.apply(this, arguments); };
 function Scene_MagicCrafting() { this.initialize.apply(this, arguments); };
-function Window_MCNameEdit() { this.initialize.apply(this, arguments); };
-function Scene_MCSkillName() { this.initialize.apply(this, arguments); };
+function Window_MagicCraftNameEdit() { this.initialize.apply(this, arguments); };
+function Scene_MagicCraftSkillName() { this.initialize.apply(this, arguments); };
 
 LMPGamesCore.pluginParams.magicCrafting = PluginManager.parameters('LMPGames_MagicCrafting');
 LMPGamesCore.pluginData.magicCrafting = {
 	skillData: [],
 	itemData: [],
 	classData: []
-}
+};
 
 var paletteTxFmt = LMPGamesCore.pluginParams.magicCrafting['Palette Formatting'];
 var cmpTxFmt = LMPGamesCore.pluginParams.magicCrafting['Component Formatting'];
@@ -244,32 +242,31 @@ var itemCostFormula = LMPGamesCore.pluginParams.magicCrafting['Item Cost Formula
 var itemBaseCost = parseInt(LMPGamesCore.pluginParams.magicCrafting['Item Base Cost']);
 var itemBaseFactor = parseFloat(LMPGamesCore.pluginParams.magicCrafting['Item Base Factor']);
 var costItemId = parseInt(LMPGamesCore.pluginParams.magicCrafting['Cost Item Id']);
-var currentId = startId;
 var $newSkillInstance = {};
 
 
 
 
 /* Database Manager Alias Functions */
-var geowilMCraftingDataManagerIsDatabaseLoaded = DataManager.isDatabaseLoaded;
+var lmpGamesMagicCrafting_DataManager_IsDatabaseLoaded = DataManager.isDatabaseLoaded;
 DataManager.isDatabaseLoaded = function(){
-	if (!geowilMCraftingDataManagerIsDatabaseLoaded.call(this)) { return false;}
-	this.loadMCraftingNoteTags();
+	if (!lmpGamesMagicCrafting_DataManager_IsDatabaseLoaded.call(this)) { return false;}
+	this.loadMagicCraftingNoteTags();
 	return true;
 };
 
-DataManager.loadMCraftingNoteTags = function(){
+DataManager.loadMagicCraftingNoteTags = function(){
 	let magicCraftData = LMPGamesCore.pluginData.magicCrafting;
-	magicCraftData.classData = this.processMCraftingNoteTags($dataClasses, "class");
-	magicCraftData.skillData = this.processMCraftingNoteTags($dataSkills, "skill");
-	magicCraftData.itemData = this.processMCraftingNoteTags($dataItems, "item");
+	magicCraftData.classData = this.processMagicCraftingNoteTags($dataClasses, "class");
+	magicCraftData.skillData = this.processMagicCraftingNoteTags($dataSkills, "skill");
+	magicCraftData.itemData = this.processMagicCraftingNoteTags($dataItems, "item");
 };
 
-DataManager.processMCraftingNoteTags = function(dataObj, typ){
+DataManager.processMagicCraftingNoteTags = function(dataObj, typ){
 	let returnObject = [];
 	for(let obj of dataObj){
-		returnObject[obj.id] = {};
 		if (obj){
+			returnObject[obj.id] = {};
 			if (obj.note != undefined && obj.note != ""){
 				let noteData = obj.note.split(/[\r\n]+/);
 
@@ -378,6 +375,8 @@ DataManager.processMCraftingNoteTags = function(dataObj, typ){
 					}
 				}
 			}
+		} else {
+			returnObject[0] = {};
 		}
 	}
 
@@ -386,45 +385,51 @@ DataManager.processMCraftingNoteTags = function(dataObj, typ){
 
 
 /* Game_Interpreter Functions */
-var geowilGameInterpreterPluginCommand = Game_Interpreter.prototype.pluginCommand;
+var lmpGamesMagicCrafting_GameInterpreter_PluginCommand = Game_Interpreter.prototype.pluginCommand;
 Game_Interpreter.prototype.pluginCommand = function(command, args){
-	if (command == "Geowil.MagicCrafting"){
+	if (command == "LMPGames.MagicCrafting") {
 		let argString = "";
-
 		for (let i1 = 0; i1 < args.length; i1++){
 			argString += " " + args[i1];
 		}
 
 		command += argString;
+		if (command.match(/LMPGames.MagicCrafting[ ]Open/)) {
+			matches = (/LMPGames.MagicCrafting[ ]Open/.exec(command) || []);
 
-		if (command.match(/Geowil.MagicCrafting[ ]Open/)){
-			matches = (/Geowil.MagicCrafting[ ]Open/.exec(command) || []);
-
-			if (matches.length > 0){
+			if (matches.length > 0) {
 				SceneManager.push(Scene_MagicCrafting);
 			}
-		} else if (command.match(/Geowil.MagicCrafting[ ](\d+)[ ](\w+)/)){
-			matches = (/Geowil.MagicCrafting[ ](\d+)[ ](\w+)/.exec(command) || []);
+		} else if (command.match(/LMPGames.MagicCrafting[ ](\d+)[ ]Craftable/)) {
+			matches = (/LMPGames.MagicCrafting[ ](\d+)[ ]Craftable/.exec(command) || []);
 
-			if (matches.length > 0){
-				if (matches[2] == "Craftable"){
-					this.setSkillCraftable(matches[1]);
-				} else if (matches[2] == "Uncraftable"){
-					this.setSkillUncraftable(matches[1]);
-				}
+			if (matches.length > 1) {
+				this.setSkillCraftable(matches[1]);
+			}
+		} else if (command.match(/LMPGames.MagicCrafting[ ](\d+)[ ]Uncraftable/)) {
+			matches = (/LMPGames.MagicCrafting[ ](\d+)[ ]Uncraftable/.exec(command) || []);
+
+			if (matches.length > 1) {
+				this.setSkillUncraftable(matches[1]);
 			}
 		}
 	} else {
-		geowilGameInterpreterPluginCommand.call(this, command, args);
+		lmpGamesMagicCrafting_GameInterpreter_PluginCommand.call(this, command, args);
 	}
 }
 
 Game_Interpreter.prototype.setSkillCraftable = function(skillId){
-	LMPGamesCore.pluginData.magicCrafting.skillData.find(sk => sk && sk.id == skillId).CanCraft = true;
+	let skillPluginData = LMPGamesCore.pluginData.magicCrafting.skillData.find(sk => sk && sk.id == skillId)
+	if (skillPluginData) {
+		skillPluginData.CanCraft = true;
+	}
 }
 
 Game_Interpreter.prototype.setSkillUncraftable = function(skillId){
-	LMPGamesCore.pluginData.magicCrafting.skillData.find(sk => sk && sk.id == skillId).CanCraft = false;
+	let skillPluginData = LMPGamesCore.pluginData.magicCrafting.skillData.find(sk => sk && sk.id == skillId)
+	if (skillPluginData) {
+		skillPluginData.CanCraft = false;
+	}
 }
 
 /* Scene_MagicCrafting Functions */
@@ -434,24 +439,26 @@ Scene_MagicCrafting.prototype.constructor = Scene_MagicCrafting;
 Scene_MagicCrafting.prototype.initialize = function(){
 	Scene_MenuBase.prototype.initialize.call(this);
 	LMPGamesCore.functions.enableWindowScrolling(true);
-
-	this._craftPaletteWnd = undefined;
-	this._craftCmpSelectionWnd = undefined;
-	this._craftCatSelectionWid = undefined;
-	this._craftBlueprintListWnd = undefined;
-	this._craftInfoWnd = undefined;
-	this._craftingCmdWnd = undefined;
+	this._magicCraftPaletteWnd = undefined;
+	this._magicCraftCmpSelectionWnd = undefined;
+	this._magicCraftCatSelectionWid = undefined;
+	this._magicCraftBlueprintListWnd = undefined;
+	this._magicCraftInfoWnd = undefined;
+	this._magicCraftingCmdWnd = undefined;
+	this._magicCraftGoldWnd = undefined;
 	this._infoWndMode = 0;
 	this._selectedComponents = {
 		"Component1": 0,
 		"Component2": 0,
 		"Component3": 0
 	};
+
 	this._selectedCatalysts = {
 		"Catalyst1": 0,
 		"Catalyst2": 0,
 		"Catalyst3": 0
 	};
+
 	this._selectedBaseId = 0;
 	this._currentComponentSpell = "";
 	this._currentCatalystItem = "";
@@ -459,17 +466,14 @@ Scene_MagicCrafting.prototype.initialize = function(){
 
 Scene_MagicCrafting.prototype.create = function(){
 	Scene_MenuBase.prototype.create.call(this);
-
 	this.createWindows();
-
-	this._craftPaletteWnd.setCraftListWindow(this._craftBlueprintListWnd);
-	this._craftPaletteWnd.show();
-	this._craftPaletteWnd.activate();
-	this._craftPaletteWnd.select(0);
-	this._craftInfoWnd.show();
-	this._craftBlueprintListWnd.refresh();
-	this._craftBlueprintListWnd.show();
-
+	this._magicCraftPaletteWnd.setCraftListWindow(this._magicCraftBlueprintListWnd);
+	this._magicCraftPaletteWnd.show();
+	this._magicCraftPaletteWnd.activate();
+	this._magicCraftPaletteWnd.select(0);
+	this._magicCraftInfoWnd.show();
+	this._magicCraftBlueprintListWnd.refresh();
+	this._magicCraftBlueprintListWnd.show();
 }
 
 Scene_MagicCrafting.prototype.createWindows = function(){
@@ -486,53 +490,50 @@ Scene_MagicCrafting.prototype.createWindows = function(){
 Scene_MagicCrafting.prototype.createInfoWindow = function(){
 	let x = 310;
 	let y = this._helpWindow.height + 10;
-
 	let w = Graphics.width - x;
 	let h = 280;
 
-	this._craftInfoWnd = new Window_CraftInfo(x, y, w, h);
-	this._craftInfoWnd.hide();
-	this.addWindow(this._craftInfoWnd);
+	this._magicCraftInfoWnd = new Window_MagicCraftInfo(x, y, w, h);
+	this._magicCraftInfoWnd.hide();
+	this.addWindow(this._magicCraftInfoWnd);
 }
 
 Scene_MagicCrafting.prototype.createPaletteWindow = function(){
 	let x = 0;
 	let y = this._helpWindow.height + 10;
-
 	let w = 300;
 	let h = 210;
 
-	this._craftPaletteWnd = new Window_CraftPalette(x, y, w, h, this._helpWindow);
-	this._craftPaletteWnd.setHandler('ok', this.paletteOkProcessing.bind(this));
-	this._craftPaletteWnd.setHandler('cancel', this.paletteCancelProcessing.bind(this));
-	this._craftPaletteWnd.hide();
-	this.addWindow(this._craftPaletteWnd);
+	this._magicCraftPaletteWnd = new Window_MagicCraftPalette(x, y, w, h, this._helpWindow);
+	this._magicCraftPaletteWnd.setHandler('ok', this.paletteOkProcessing.bind(this));
+	this._magicCraftPaletteWnd.setHandler('cancel', this.paletteCancelProcessing.bind(this));
+	this._magicCraftPaletteWnd.hide();
+	this.addWindow(this._magicCraftPaletteWnd);
 }
 
 Scene_MagicCrafting.prototype.paletteOkProcessing = function(){
-	this._infoWndMode = this._craftPaletteWnd.getSelectedMode();
-	this._currentComponentSpell = this._craftPaletteWnd.getCurrentComponent();
-	this._currentCatalystItem = this._craftPaletteWnd.getCurrentCatalyst();
-	this._craftInfoWnd.setMode(this._infoWndMode);
-	this._craftInfoWnd.refresh();
-
-	this._craftPaletteWnd.deselect();
-	this._craftPaletteWnd.deactivate();
+	this._infoWndMode = this._magicCraftPaletteWnd.getSelectedMode();
+	this._magicCurrentComponentSpell = this._magicCraftPaletteWnd.getCurrentComponent();
+	this._magicCurrentCatalystItem = this._magicCraftPaletteWnd.getCurrentCatalyst();
+	this._magicCraftInfoWnd.setMode(this._infoWndMode);
+	this._magicCraftInfoWnd.refresh();
+	this._magicCraftPaletteWnd.deselect();
+	this._magicCraftPaletteWnd.deactivate();
 
 	if (this._infoWndMode == 1){ //Component
-		this._craftPaletteWnd.hide();
-		this._craftCmpSelectionWnd.show();
-		this._craftCmpSelectionWnd.activate();
-		this._craftCmpSelectionWnd.select(0);
+		this._magicCraftPaletteWnd.hide();
+		this._magicCraftCmpSelectionWnd.show();
+		this._magicCraftCmpSelectionWnd.activate();
+		this._magicCraftCmpSelectionWnd.select(0);
 	} else if (this._infoWndMode == 2) { //Catalyst
-		this._craftPaletteWnd.hide();
-		this._craftCatSelectionWnd.setSelectedCatalysts(this._selectedCatalysts);
-		this._craftCatSelectionWnd.show();
-		this._craftCatSelectionWnd.activate();
-		this._craftCatSelectionWnd.select(0);
+		this._magicCcraftPaletteWnd.hide();
+		this._magicCraftCatSelectionWnd.setSelectedCatalysts(this._selectedCatalysts);
+		this._magicCraftCatSelectionWnd.show();
+		this._magicCraftCatSelectionWnd.activate();
+		this._magicCraftCatSelectionWnd.select(0);
 	} else { //BlueprintList
-		this._craftBlueprintListWnd.activate();
-		this._craftBlueprintListWnd.select(0);
+		this._magicCraftBlueprintListWnd.activate();
+		this._magicCraftBlueprintListWnd.select(0);
 	}
 }
 
@@ -544,215 +545,341 @@ Scene_MagicCrafting.prototype.paletteCancelProcessing = function() {
 Scene_MagicCrafting.prototype.createCmpSelectionWindow = function(){
 	let x = 0;
 	let y = this._helpWindow.height + 10;
-
 	let w = 300;
 	let h = 280;
 
-	this._craftCmpSelectionWnd = new Window_CraftComponentSelection(x, y, w, h, this._craftInfoWnd, this._helpWindow);
-	this._craftCmpSelectionWnd.setHandler('ok', this.selectedComponent.bind(this));
-	this._craftCmpSelectionWnd.setHandler('cancel', this.componentCancelProcessing.bind(this));
-	this._craftCmpSelectionWnd.hide();
-	this.addWindow(this._craftCmpSelectionWnd);
+	this._magicCraftCmpSelectionWnd = new Window_MagicCraftComponentSelection(x, y, w, h, this._magicCraftInfoWnd, this._helpWindow);
+	this._magicCraftCmpSelectionWnd.setHandler('ok', this.selectedComponent.bind(this));
+	this._magicCraftCmpSelectionWnd.setHandler('cancel', this.componentCancelProcessing.bind(this));
+	this._magicCraftCmpSelectionWnd.hide();
+	this.addWindow(this._magicCraftCmpSelectionWnd);
 }
 
 Scene_MagicCrafting.prototype.selectedComponent = function(){
-	let selectedCmp = this._craftCmpSelectionWnd.getSelectedComponent();
+	let selectedCmp = this._magicCraftCmpSelectionWnd.getSelectedComponent();
 	this._selectedComponents[this._currentComponentSpell] = selectedCmp;
 
-	this._craftBlueprintListWnd.updateSelectedComponents(this._selectedComponents);
-	this._craftPaletteWnd.updateSelectedComponents(this._selectedComponents);
-	this._craftInfoWnd.setMode(0);
-	this._craftInfoWnd.updateSelectedComponents(this._selectedComponents);
+	this._magicCraftBlueprintListWnd.updateSelectedComponents(this._selectedComponents);
+	this._magicCraftPaletteWnd.updateSelectedComponents(this._selectedComponents);
+	this._magicCraftInfoWnd.setMode(0);
+	this._magicCraftInfoWnd.updateSelectedComponents(this._selectedComponents);
+	this._magicCraftCostWnd.updateComponents(this._selectedComponents);
 
-	this._craftCostWnd.updateComponents(this._selectedComponents);
-
-	this._craftCmpSelectionWnd.hide();
-	this._craftCmpSelectionWnd.deselect();
-	this._craftCmpSelectionWnd.deactivate();
-
-	this._craftPaletteWnd.show();
-	this._craftPaletteWnd.activate();
-	this._craftPaletteWnd.select(0);
-	this._craftPaletteWnd.resetSelect('reset');
+	this._magicCraftCmpSelectionWnd.hide();
+	this._magicCraftCmpSelectionWnd.deselect();
+	this._magicCraftCmpSelectionWnd.deactivate();
+	this._magicCraftPaletteWnd.show();
+	this._magicCraftPaletteWnd.activate();
+	this._magicCraftPaletteWnd.select(0);
+	this._magicCraftPaletteWnd.resetSelect('reset');
 }
 
 Scene_MagicCrafting.prototype.componentCancelProcessing = function(){
-	this._craftInfoWnd.setMode(0);
-	this._craftCmpSelectionWnd.hide();
-	this._craftCmpSelectionWnd.deselect();
-	this._craftCmpSelectionWnd.deactivate();
+	this._magicCraftInfoWnd.setMode(0);
 
-	this._craftPaletteWnd.show();
-	this._craftPaletteWnd.activate();
-	this._craftPaletteWnd.select(0);
-	this._craftPaletteWnd.resetSelect('reset');
+	this._magicCraftCmpSelectionWnd.hide();
+	this._magicCraftCmpSelectionWnd.deselect();
+	this._magicCraftCmpSelectionWnd.deactivate();
+	this._magicCraftPaletteWnd.show();
+	this._magicCraftPaletteWnd.activate();
+	this._magicCraftPaletteWnd.select(0);
+	this._magicCraftPaletteWnd.resetSelect('reset');
 }
 
 Scene_MagicCrafting.prototype.createCatSelectionWindow = function(){
 	let x = 0;
 	let y = this._helpWindow.height + 10;
-
 	let w = 300;
 	let h = 280;
 
-	this._craftCatSelectionWnd = new Window_CraftCatalystSelection(x, y, w, h, this._craftInfoWnd, this._helpWindow);
-	this._craftCatSelectionWnd.setHandler('ok', this.selectedCatalyst.bind(this));
-	this._craftCatSelectionWnd.setHandler('cancel', this.catalystCancelProcessing.bind(this));
-	this._craftCatSelectionWnd.hide();
-	this.addWindow(this._craftCatSelectionWnd);
+	this._magicCraftCatSelectionWnd = new Window_MagicCraftCatalystSelection(x, y, w, h, this._magicCraftInfoWnd, this._helpWindow);
+	this._magicCraftCatSelectionWnd.setHandler('ok', this.selectedCatalyst.bind(this));
+	this._magicCraftCatSelectionWnd.setHandler('cancel', this.catalystCancelProcessing.bind(this));
+	this._magicCraftCatSelectionWnd.hide();
+	this.addWindow(this._magicCraftCatSelectionWnd);
 }
 
 Scene_MagicCrafting.prototype.selectedCatalyst = function(){
-	let selectedCat = this._craftCatSelectionWnd.getSelectedCatalyst();
+	let selectedCat = this._magicCraftCatSelectionWnd.getSelectedCatalyst();
 	this._selectedCatalysts[this._currentCatalystItem] = selectedCat;
 
-	this._craftInfoWnd.setMode(0);
-	this._craftPaletteWnd.updateSelectedCatalysts(this._selectedCatalysts);
-	this._craftInfoWnd.updateSelectedCatalysts(this._selectedCatalysts);
+	this._magicCraftInfoWnd.setMode(0);
+	this._magicCraftPaletteWnd.updateSelectedCatalysts(this._selectedCatalysts);
+	this._magicCraftInfoWnd.updateSelectedCatalysts(this._selectedCatalysts);
+	this._magicCraftCostWnd.updateCatalysts(this._selectedCatalysts);
 
-	this._craftCostWnd.updateCatalysts(this._selectedCatalysts);
-
-	this._craftCatSelectionWnd.hide();
-	this._craftCatSelectionWnd.deselect();
-	this._craftCatSelectionWnd.deactivate();
-
-	this._craftPaletteWnd.show();
-	this._craftPaletteWnd.activate();
-	this._craftPaletteWnd.select(0);
-	this._craftPaletteWnd.resetSelect('reset');
+	this._magicCraftCatSelectionWnd.hide();
+	this._magicCraftCatSelectionWnd.deselect();
+	this._magicCraftCatSelectionWnd.deactivate();
+	this._magicCraftPaletteWnd.show();
+	this._magicCraftPaletteWnd.activate();
+	this._magicCraftPaletteWnd.select(0);
+	this._magicCraftPaletteWnd.resetSelect('reset');
 }
 
 Scene_MagicCrafting.prototype.catalystCancelProcessing = function(){
-	this._craftInfoWnd.setMode(0);
-	this._craftCatSelectionWnd.hide();
-	this._craftCatSelectionWnd.deselect();
-	this._craftCatSelectionWnd.deactivate();
+	this._magicCraftInfoWnd.setMode(0);
+	this._magicCraftCatSelectionWnd.hide();
+	this._magicCraftCatSelectionWnd.deselect();
+	this._magicCraftCatSelectionWnd.deactivate();
 
-	this._craftPaletteWnd.show();
-	this._craftPaletteWnd.activate();
-	this._craftPaletteWnd.select(0);
-	this._craftPaletteWnd.resetSelect('reset');
+	this._magicCraftPaletteWnd.show();
+	this._magicCraftPaletteWnd.activate();
+	this._magicCraftPaletteWnd.select(0);
+	this._magicCraftPaletteWnd.resetSelect('reset');
 }
 
 Scene_MagicCrafting.prototype.createBlueprintListWindow = function(){
 	let x = 0;
-	let y = this._craftPaletteWnd.getHeight() + 20 + this._helpWindow.height;
+	let y = this._magicCraftPaletteWnd.getHeight() + 20 + this._helpWindow.height;
 	let w = 300;
 	let h = 180;
 
-	this._craftBlueprintListWnd = new Window_CraftBlueprintList(x, y, w, h, this._craftInfoWnd, this._selectedComponents, this._craftCostWnd);
-	this._craftBlueprintListWnd.setHandler('ok', this.spellBlueprintSelected.bind(this));
-	this._craftBlueprintListWnd.setHandler('cancel', this.blueprintCancelProcessing.bind(this));
-	this._craftBlueprintListWnd.hide();
-	this.addWindow(this._craftBlueprintListWnd);
+	this._magicCraftBlueprintListWnd = new Window_MagicCraftBlueprintList(x, y, w, h, this._magicCraftInfoWnd, this._selectedComponents, this._magicCraftCostWnd);
+	this._magicCraftBlueprintListWnd.setHandler('ok', this.spellBlueprintSelected.bind(this));
+	this._magicCraftBlueprintListWnd.setHandler('cancel', this.blueprintCancelProcessing.bind(this));
+	this._magicCraftBlueprintListWnd.hide();
+	this.addWindow(this._magicCraftBlueprintListWnd);
 }
 
 Scene_MagicCrafting.prototype.spellBlueprintSelected = function(){
-	this._selectedBaseId = this._craftBlueprintListWnd.getSelectedBaseId();
-
+	this._selectedBaseId = this._magicCraftBlueprintListWnd.getSelectedBaseId();
 	if (craftingDisplayMode != 1){
-		this._craftInfoWnd.setMode(4);
-		this._craftInfoWnd.setSelectedBaseSpell(this._selectedBaseId);
+		this._magicCraftInfoWnd.setMode(4);
+		this._magicCraftInfoWnd.setSelectedBaseSpell(this._selectedBaseId);
 	} else {
-		this._craftInfoWnd.setSelectedBaseSpell(0);
+		this._magicCraftInfoWnd.setSelectedBaseSpell(0);
 	}
 
 	//this._craftBlueprintListWnd.deselect();
-	this._craftBlueprintListWnd.deactivate();
-	this._craftCmdWnd.show();
-	this._craftCmdWnd.activate();
-	this._craftCmdWnd.select(0);
+	this._magicCraftBlueprintListWnd.deactivate();
+	this._magicCraftCmdWnd.show();
+	this._magicCraftCmdWnd.activate();
+	this._magicCraftCmdWnd.select(0);
 }
 
 Scene_MagicCrafting.prototype.blueprintCancelProcessing = function() {
-	this._craftInfoWnd.setMode(0);
-	this._craftBlueprintListWnd.deactivate();
-	this._craftBlueprintListWnd.deselect();
-	this._craftPaletteWnd.activate();
-	this._craftPaletteWnd.select(0);
+	this._magicCraftInfoWnd.setMode(0);
+	this._magicCraftBlueprintListWnd.deactivate();
+	this._magicCraftBlueprintListWnd.deselect();
+	this._magicCraftPaletteWnd.activate();
+	this._magicCraftPaletteWnd.select(0);
 }
 
 Scene_MagicCrafting.prototype.createCostWindow = function(){
-	let x = this._craftPaletteWnd.getWidth() + 10;
-	let y = this._craftInfoWnd.getHeight() + this._helpWindow.getHeight() + 20;
-	let width = this._craftInfoWnd.getWidth();
+	let x = this._magicCraftPaletteWnd.getWidth() + 10;
+	let y = this._magicCraftInfoWnd.getHeight() + this._helpWindow.getHeight() + 20;
+	let width = this._magicCraftInfoWnd.getWidth();
 	let height = 115;
 
-	this._craftCostWnd = new Window_CraftCost(x, y, width, height);
-	this._craftCostWnd.show();
-	this.addWindow(this._craftCostWnd);
+	this._magicCraftCostWnd = new Window_MagicCraftCost(x, y, width, height);
+	this._magicCraftCostWnd.show();
+	this.addWindow(this._magicCraftCostWnd);
 }
 
 Scene_MagicCrafting.prototype.createCommandWindow = function(){
-	let x = this._craftPaletteWnd.getWidth() + 10;
-	let y = this._craftInfoWnd.getHeight() + this._craftCostWnd.getHeight() + this._helpWindow.getHeight() + 30;
-	let w = this._craftInfoWnd.getWidth();
+	let x = this._magicCraftPaletteWnd.getWidth() + 10;
+	let y = this._magicCraftInfoWnd.getHeight() + this._magicCraftCostWnd.getHeight() + this._helpWindow.getHeight() + 30;
+	let w = this._magicCraftInfoWnd.getWidth();
 	let h = 60;
 
-	this._craftCmdWnd = new Window_CraftCommand(x, y, w, h);
-	this._craftCmdWnd.setHandler('ok', this.cmdOkProcessing.bind(this));
-	this._craftCmdWnd.setHandler('cancel', this.cmdCancelProcessing.bind(this));
-	this._craftCmdWnd.hide();
-	this._craftCmdWnd.deactivate();
-	this.addWindow(this._craftCmdWnd);
+	this._magicCraftCmdWnd = new Window_MagicCraftCommand(x, y, w, h);
+	this._magicCraftCmdWnd.setHandler('ok', this.cmdOkProcessing.bind(this));
+	this._magicCraftCmdWnd.setHandler('cancel', this.cmdCancelProcessing.bind(this));
+	this._magicCraftCmdWnd.hide();
+	this._magicCraftCmdWnd.deactivate();
+	this.addWindow(this._magicCraftCmdWnd);
 }
 
 Scene_MagicCrafting.prototype.cmdOkProcessing = function(){
-	this._craftInfoWnd.setSelectedBaseSpell(this._selectedBaseId);
-	this._craftCmdWnd.deselect();
-	this._craftCmdWnd.deactivate();
-	this._craftInfoWnd.deactivate();
-	this._craftPaletteWnd.resetPallete();
+	this._magicCraftInfoWnd.setSelectedBaseSpell(this._selectedBaseId);
+	this._magicCraftCmdWnd.deselect();
+	this._magicCraftCmdWnd.deactivate();
+	this._magicCraftInfoWnd.deactivate();
+	this._magicCraftPaletteWnd.resetPallete();
 
 	this.unlockSpell();
 }
 
 Scene_MagicCrafting.prototype.unlockSpell = function(){
-	let baseSkill;
-	let componentSkills = [];
+	let baseSkillData;
+	let baseSkillPluginData;
+	let existingSkillData;
+	let existingSkillPluginData;
 	let catalystItems = [];
-	let cmpIds = [];
-	let catIds = [];
+	let catalystItemIds = Object.values(this._selectedCatalysts);
 
-	if (bPreventRename){
-		let existingSkill = $dataSkills.find(sk => sk && sk.BaseSkillId == this._selectedBaseId);
-		if (existingSkill){
-			baseSkill = existingSkill;
+	if (this._selectedBaseId > 0) {
+		if (bPreventRename){
+			existingSkillPluginData = LMPGamesCore.pluginData.magicCrafting.skillData
+				.find(skl => skl && skl.BaseSkillId == this._selectedBaseId);
+			
+			if (existingSkillPluginData) {
+				existingSkillData = $dataSkills.find(skl => skl && skl.id == existingSkillPluginData.Id);
+			} else {
+				baseSkillData = $dataSkills[this._selectedBaseId];
+				baseSkillPluginData = LMPGamesCore.pluginData.magicCrafting.skillData
+					.find(skl => skl && skl.Id == this._selectedBaseId);
+			}
 		} else {
-			baseSkill = $dataSkills[this._selectedBaseId];
+			baseSkillData = $dataSkills[this._selectedBaseId];
+			baseSkillPluginData = LMPGamesCore.pluginData.magicCrafting.skillData
+				.find(skl => skl && skl.Id == this._selectedBaseId);
 		}
-	} else {
-		baseSkill = $dataSkills[this._selectedBaseId];
+
+		if (baseSkillData && baseSkillPluginData){
+			let newSkillData;
+			let newSkillPluginData;
+			let currentSkillData = JSON.parse(JSON.stringify(baseSkillData));
+			let currentSkillPluginData = JSON.parse(JSON.stringify(baseSkillPluginData));
+
+			newSkillData = this.createNewSkillData(currentSkillData);
+			if (newSkillData) {
+				newSkillPluginData = this.createNewSkillPluginData(currentSkillPluginData);
+				if (newSkillPluginData) {
+					this.processCraftingSkillData(newSkillData);
+					this.processCraftingSkillPluginData(newSkillPluginData);
+
+					if (bPreventRename) {
+						this.updateSkillName(newSkillData, newSkillPluginData);
+						let recipeSkillPluginData = LMPGamesCore.pluginData.magicCrafting.skillData
+							.find(skl => skl.Id == this._selectedBaseId);
+
+						if (recipeSkillPluginData) {
+							this.updateRecipeSkill(recipeSkillPluginData);
+						}
+					}
+
+					$dataSkills[newSkillData.id] = newSkillData;
+					LMPGamesCore.pluginData.magicCrafting.skillData[newSkillPluginData.Id] = newSkillPluginData;
+
+					if (bEnableMagicSchoolsSupport) {
+						this.processMagicSchoolsUpdates(newSkillData, newSkillPluginData);
+					}
+
+					if (catalystItemIds.length > 0){
+						catalystItems = $dataItems.filter(itm => itm && catalystItemIds.includes(itm.id));
+						for (let itm of catalystItems){
+							$gameParty.loseItem(itm, 1, false);
+						}
+					}
+					resetSceneProperties
+
+					if (!bPreventRename){
+						$newSkillInstance = newSkillInst;
+						SceneManager.push(Scene_MagicCraftSkillName);
+					}
+				}
+			}
+		} else if (existingSkillData && existingSkillPluginData) {
+			this.processCraftingSkillData(existingSkillData);
+			this.processCraftingSkillPluginData(existingSkillPluginData);
+			this.updateSkillName(existingSkillData, existingSkillPluginData);
+			let recipeSkillPluginData = LMPGamesCore.pluginData.magicCrafting.skillData
+				.find(skl => skl.Id == this._selectedBaseId);
+
+			if (recipeSkillPluginData) {
+				this.updateRecipeSkill(recipeSkillPluginData);
+			}
+
+			if (bEnableMagicSchoolsSupport) {
+				this.processMagicSchoolsUpdates(newSkillData, newSkillPluginData);
+			}
+
+			if (catalystItemIds.length > 0){
+				catalystItems = $dataItems.filter(itm => itm && catalystItemIds.includes(itm.id));
+				for (let itm of catalystItems){
+					$gameParty.loseItem(itm, 1, false);
+				}
+			}
+			
+			this.resetSceneProperties();
+		}
 	}
 
-	let newSkillInst = JSON.parse(JSON.stringify(baseSkill));
-	newSkillInst.id = (!bPreventRename ? currentId + 1 : (baseSkill.id < startId ? currentId + 1 : baseSkill.id));
-	currentId += (!bPreventRename ? 1 : (baseSkill.id < startId ? 1 : 0));
+	this._magicCraftCmdWnd.hide();
+	this._magicCraftCmdWnd.deactivate();
+	this._magicCraftPaletteWnd.activate();
+	this._magicCraftPaletteWnd.select(0);
+}
 
-	cmpIds = Object.values(this._selectedComponents);
-	catIds = Object.values(this._selectedCatalysts);
+Scene_MagicCrafting.prototype.createNewSkillData = function(currentSkillData){
+	let currentId = LMPGamesCore.pluginData.magicCrafting.skillData.at(-1);
+	let newSkillData;
+	if (currentId != undefined) {	
+		newSkillData = JSON.parse(JSON.stringify(currentSkillData));
+		newSkillData.id = currentId + 1;
+	}
 
-	componentSkills = getComponentData(cmpIds);
-	catalystItems = getCatalystData(catIds);
-	newSkillInst.damage.formula = processFormula(newSkillInst, componentSkills, catalystItems);
-	newSkillInst.effects = newSkillInst.effects.concat(processNewEffects(newSkillInst, catalystItems));
+	return newSkillData;
+}
 
-	let pluginData = LMPGamesCore.pluginData.magicCrafting;
-	pluginData.skillData[newSkillInst.id] = {
-		CraftingShowName: false,
-		BaseSkillId: (!bPreventRename ? this._selectedBaseId : (baseSkill.id < startId ? this._selectedBaseId : newSkillInst.BaseSkillId)),
-		CanLearn: true,
-		IsRecipe: false,
-		CanCraft: false
-	};
+Scene_MagicCrafting.prototype.createNewSkillPluginData = function(currentSkillPluginData){
+	let currentId = LMPGamesCore.pluginData.magicCrafting.skillData.at(-1);
+	let newSkillPluginData;
+	if (currentId != undefined) {	
+		newSkillPluginData = JSON.parse(JSON.stringify(currentSkillPluginData));
+		newSkillPluginData.id = currentId + 1;
+	}
 
-	pluginData.skillData[baseSkill.id].CraftingShowName = (!bPreventRename ? true : (baseSkill.id < startId ? true : false));
-	pluginData.skillData[baseSkill.id].Obfuscated = false;
+	return newSkillPluginData;
+}
 
-	$newSkillInstance = newSkillInst;
+Scene_MagicCrafting.prototype.processCraftingSkillData = function(skillData){
+	componentIds = Object.values(this._selectedComponents);
+	catalystIds = Object.values(this._selectedCatalysts);
+	componentSkillsData = getComponentData(componentIds);
+	componentSkillsPluginData = getComponentPluginData(componentIds)
+	catalystItemsPluginData = getCatalystData(catalystIds);
 
-	//Magic Schools handling
-	//Future: Possibly add in code to allow crafting to work w/o Magic Schools plugin
+	skillData.damage.formula = processFormula(skillData, componentSkillsData, componentSkillsPluginData, catalystItemsPluginData);
+	skillData.effects = skillData.effects.concat(processNewEffects(skillData, catalystItemsPluginData));
+}
+
+Scene_MagicCrafting.prototype.processCraftingSkillPluginData = function(skillPluginData){
+	let existingSkillPluginData = LMPGamesCore.pluginData.magicCrafting.skillData
+		.find(skl => skl && skl.Id == skillPluginData.Id);
+	if (!existingSkillPluginData) {
+		LMPGamesCore.pluginData.magicCrafting.skillData[skillPluginData.Id] = skillPluginData;
+	}
+
+	LMPGamesCore.pluginData.magicCrafting.skillData[skillPluginData.Id].CraftingShowName = false;
+	LMPGamesCore.pluginData.magicCrafting.skillData[skillPluginData.Id].BaseSkillId = this._selectedBaseId;	
+	LMPGamesCore.pluginData.magicCrafting.skillData[skillPluginData.Id].IsRecipe = false;	
+	LMPGamesCore.pluginData.magicCrafting.skillData[skillPluginData.Id].Obfuscated = false;
+	LMPGamesCore.pluginData.magicCrafting.skillData[skillPluginData.Id].CanLearn = (bEnableMagicSchoolsSupport ? true : false);
+	LMPGamesCore.pluginData.magicCrafting.skillData[skillPluginData.Id].CanCraft = false;
+}
+
+Scene_MagicCrafting.prototype.updateSkillName = function(skillData, skillPluginData){
+	if (skillPluginData.TimesCrafted > 0){
+		let skillName = skillData.name;
+		skillData.name = skillName + ' +' + String(skillPluginData.TimesCrafted);
+		skillPluginData.TimesCrafted = 0;
+	}
+}
+
+Scene_MagicCrafting.prototype.updateRecipeSkill = function(baseSkillPluginData){
+	baseSkillPluginData.TimesCrafted++;
+}
+
+Scene_MagicCrafting.prototype.processMagicSchoolsUpdates = function(newSkillData, newSkillPluginData){
+	this.createMagicSchoolsSkillPluginData(newSkillPluginData);
+	this.addSkillToSchool(newSkillData);
+}
+
+Scene_MagicCrafting.prototype.createMagicSchoolsSkillPluginData = function(newSkillPluginData){
+	let magicSchoolsSkillPluginData = LMPGamesCore.pluginData.magicSchoolsData
+		.skillData.find(skl => skl && skl.Id == newSkillPluginData.BaseSkillId);
+	if (magicSchoolsSkillPluginData) {
+		let newSchoolSkillPluginData = JSON.parse(JSON.stringify(magicSchoolsSkillPluginData));
+		newSchoolSkillPluginData.Id = newSkillPluginData.Id;
+		newSchoolSkillPluginData.CanLearn = true;
+		LMPGamesCore.pluginData.magicSchoolsData.skillData[newSkillPluginData.Id] = newSchoolSkillPluginData;
+	}
+}
+
+Scene_MagicCrafting.prototype.addSkillToSchool = function(newSkillData){
 	let magicSchoolData = LMPGamesCore.pluginData.magicSchoolsData;
 	let schools = Object.values(magicSchoolData.schools);
 	let bSkillAdded = false;
@@ -763,10 +890,9 @@ Scene_MagicCrafting.prototype.unlockSpell = function(){
 		for (let i2 = 0; i2 < trees.length; i2++){
 			let currTree = trees[i2];
 			let treeConfig = currTree.TreeConfig;
-
 			if (treeConfig.includes(String(this._selectedBaseId))){
-				if (!treeConfig.includes($newSkillInstance.id)){
-					treeConfig.push(String($newSkillInstance.id));
+				if (!treeConfig.includes(newSkillData.id)){
+					treeConfig.push(String(newSkillData.id));
 					let priGradeConfig = Object.values(currTree.PrimaryGradeConfig);
 					let secGradeConfig = Object.values(currTree.SecondaryGradeConfig);
 
@@ -775,12 +901,12 @@ Scene_MagicCrafting.prototype.unlockSpell = function(){
 						let currSecConfig = secGradeConfig[i3];
 
 						if (currPriConfig.Config.includes(String(this._selectedBaseId))){
-							currPriConfig.Config.push(String($newSkillInstance.id));
+							currPriConfig.Config.push(String(newSkillData.id));
 							bSkillAdded = true;
 						}
 
 						if (currSecConfig.Config.includes(String(this._selectedBaseId))){
-							currSecConfig.Config.push(String($newSkillInstance.id));
+							currSecConfig.Config.push(String(newSkillData.id));
 							bSkillAdded = true;
 						}
 					}
@@ -792,7 +918,9 @@ Scene_MagicCrafting.prototype.unlockSpell = function(){
 			}
 		}
 	}
+}
 
+Scene_MagicCrafting.prototype.resetSceneProperties = function(){
 	this._selectedComponents = {
 		"Component1": 0,
 		"Component2": 0,
@@ -809,33 +937,6 @@ Scene_MagicCrafting.prototype.unlockSpell = function(){
 	this._craftBlueprintListWnd.updateSelectedComponents(this._selectedComponents);
 	this._craftInfoWnd.updateSelectedComponents(this._selectedComponents);
 	this._craftInfoWnd.updateSelectedCatalysts(this._selectedCatalysts);
-	this._craftPaletteWnd.activate();
-	this._craftPaletteWnd.select(0);
-
-	for (let itm of catalystItems){
-		$gameParty.loseItem(itm, 1, false);
-	}
-
-	if (!bPreventRename){
-		SceneManager.push(Scene_MCSkillName);
-	} else {
-		if (baseSkill.id > startId){
-			let craftBaseSkill;
-			craftBaseSkill = $dataSkills.find(sk => sk && sk.id == $newSkillInstance.BaseSkillId);
-			if (craftBaseSkill){
-				baseSkill = craftBaseSkill;
-			}
-		}
-		if (pluginData.skillData[baseSkill.id].TimesCrafted > 0){
-			let skillName = baseSkill.name;
-			$newSkillInstance.name = skillName + ' +' + String(pluginData.skillData[baseSkill.id].TimesCrafted);
-		}
-
-		$dataSkills[$newSkillInstance.id] = $newSkillInstance;
-		pluginData.skillData[baseSkill.id].TimesCrafted++;
-	}
-
-	$dataSkills[baseSkill.id] = baseSkill;
 	this._selectedBaseId = 0;
 }
 
@@ -846,16 +947,17 @@ Scene_MagicCrafting.prototype.cmdCancelProcessing = function(){
 	this._craftBlueprintListWnd.select(0);
 }
 
-/* Window_CraftPalette Functions */
-Window_CraftPalette.prototype = Object.create(Window_Selectable.prototype);
-Window_CraftPalette.prototype.constructor = Window_CraftPalette;
+/* Window_MagicCraftPalette Functions */
+Window_MagicCraftPalette.prototype = Object.create(Window_Selectable.prototype);
+Window_MagicCraftPalette.prototype.constructor = Window_MagicCraftPalette;
 
-Window_CraftPalette.prototype.initialize = function(x, y, w, h, helpWnd){
-	this._helpWindow = helpWnd;
+Window_MagicCraftPalette.prototype.initialize = function(x, y, w, h, helpWnd){
 	this._width = w;
 	this._height = h;
 	this._x = x;
 	this._y = y;
+
+	Window_Selectable.prototype.initialize.call(this, x, y, w, h);
 	this._comList = [];
 	this._intComList = [];
 	this._pageIndex = 0;
@@ -866,21 +968,27 @@ Window_CraftPalette.prototype.initialize = function(x, y, w, h, helpWnd){
 	this._selectedCatalysts = [];
 	this._selectedComponents = [];
 	this._bCanCraft = false;
-	this._craftListWnd = null;
+	this._blueprintListWnd = null;
+	this._helpWindow = helpWnd;
 
-	let actClsId = this._craftingActor._classId;
-
-	this._numOfComponents = LMPGamesCore.pluginData.magicCrafting.classData[actClsId].MaxComponents;
-	this._numOfCatalysts = LMPGamesCore.pluginData.magicCrafting.classData[actClsId].MaxCatalysts;
-
+	this._actClsId = this._craftingActor._classId;
+	this.getClassConfig();
+	this._numOfComponents = 0;
+	this._numOfCatalysts = 0;
 	this._currentCmp = "";
 	this._currentCat = "";
-
-	Window_Selectable.prototype.initialize.call(this, x, y, w, h);
 	this.refresh();
 }
 
-Window_CraftPalette.prototype.updateSelectedComponents = function(selCmp) {
+Window_MagicCraftPalette.prototype.getClassConfig = function(){
+	let classPluginData = LMPGamesCore.pluginData.magicCrafting.classData.find(cls => cls && cls.Id == this._actClsId);
+	if (classPluginData) {
+		this._numOfComponents = classPluginData.MaxComponents;
+		this._numOfCatalysts = classPluginData.MaxCatalysts;
+	}
+}
+
+Window_MagicCraftPalette.prototype.updateSelectedComponents = function(selCmp) {
 	this._selectedComponents = [];
 	for (let key of Object.keys(selCmp)){
 		let compSkillId = selCmp[key];
@@ -890,7 +998,7 @@ Window_CraftPalette.prototype.updateSelectedComponents = function(selCmp) {
 	this.refresh();
 }
 
-Window_CraftPalette.prototype.updateSelectedCatalysts = function(selCat) {
+Window_MagicCraftPalette.prototype.updateSelectedCatalysts = function(selCat) {
 	this._selectedCatalysts = [];
 	for (let key of Object.keys(selCat)){
 		let catItemId = selCat[key];
@@ -898,43 +1006,41 @@ Window_CraftPalette.prototype.updateSelectedCatalysts = function(selCat) {
 	}
 }
 
-Window_CraftPalette.prototype.getHeight = function() { return this._height; }
-Window_CraftPalette.prototype.getWidth = function() { return this._width; }
-Window_CraftPalette.prototype.getSelectedMode = function() { return this._selectedMode; }
-Window_CraftPalette.prototype.maxItems = function() { return (this._comList ? this._comList[this._pageIndex].length : 1); }
-Window_CraftPalette.prototype.setCraftListWindow = function(subWnd) {
-	this._craftListWnd = subWnd;
+Window_MagicCraftPalette.prototype.getHeight = function() { return this._height; }
+Window_MagicCraftPalette.prototype.getWidth = function() { return this._width; }
+Window_MagicCraftPalette.prototype.getSelectedMode = function() { return this._selectedMode; }
+Window_MagicCraftPalette.prototype.maxItems = function() { return (this._comList ? this._comList[this._pageIndex].length : 1); }
+Window_MagicCraftPalette.prototype.setCraftListWindow = function(subWnd) {
+	this._blueprintListWnd = subWnd;
 	this.refresh();
 }
 
-Window_CraftPalette.prototype.itemHeight = function() {
+Window_MagicCraftPalette.prototype.itemHeight = function() {
 	let clientHeight = this._height - this.padding * 2;
 	return Math.floor(clientHeight / this.numVisibleRows());
 }
 
-Window_CraftPalette.prototype.itemWidth = function() {
-    return Math.floor((this._width - this.padding * 2 +
-                   this.spacing()) / this.maxCols() - this.spacing());
+Window_MagicCraftPalette.prototype.itemWidth = function() {
+	return Math.floor((this._width - this.padding * 2 +
+		this.spacing()) / this.maxCols() - this.spacing());
 }
 
-Window_CraftPalette.prototype.getCurrentComponent = function() { return this._currentCmp; }
-Window_CraftPalette.prototype.getCurrentCatalyst = function() { return this._currentCat; }
-Window_CraftPalette.prototype.itemRect = function(index){
+Window_MagicCraftPalette.prototype.getCurrentComponent = function() { return this._currentCmp; }
+Window_MagicCraftPalette.prototype.getCurrentCatalyst = function() { return this._currentCat; }
+Window_MagicCraftPalette.prototype.itemRect = function(index){
 	let rect = new Rectangle();
-    let maxCols = this.maxCols();
-    rect.width = this.itemWidth();
-    rect.height = this.itemHeight();
-    rect.x = index % maxCols * (rect.width + this.spacing()) - this._scrollX;
-    rect.y = Math.floor(index / maxCols) * rect.height - this._scrollY;
-    return rect;
+	let maxCols = this.maxCols();
+	rect.width = this.itemWidth();
+	rect.height = this.itemHeight();
+	rect.x = index % maxCols * (rect.width + this.spacing()) - this._scrollX;
+	rect.y = Math.floor(index / maxCols) * rect.height - this._scrollY;
+	return rect;
 }
 
-Window_CraftPalette.prototype.numVisibleRows = function() {
-	return 4;
-}
-Window_CraftPalette.prototype.setCurrentCompId = function(cmpId) { this._selectedComponents[this._currentCmp] = cmpId; }
-Window_CraftPalette.prototype.setCurrentCatId = function(catId) { this._selectedCatalysts[this._currentCat] = catId; }
-Window_CraftPalette.prototype.resetPallete = function(){
+Window_MagicCraftPalette.prototype.numVisibleRows = function() { return 4; }
+Window_MagicCraftPalette.prototype.setCurrentCompId = function(cmpId) { this._selectedComponents[this._currentCmp] = cmpId; }
+Window_MagicCraftPalette.prototype.setCurrentCatId = function(catId) { this._selectedCatalysts[this._currentCat] = catId; }
+Window_MagicCraftPalette.prototype.resetPallete = function(){
 	this._selectedComponents = [];
 	this._selectedCatalysts =[];
 	this._currentCat = "";
@@ -943,14 +1049,13 @@ Window_CraftPalette.prototype.resetPallete = function(){
 	this.refresh();
 }
 
-Window_CraftPalette.prototype.drawItem = function(index){
+Window_MagicCraftPalette.prototype.drawItem = function(index){
 	let rect = this.itemRectForText(index);
 	let x = rect.width/2;
 	let y = rect.y + (rect.height/2) - this.lineHeight() * 0.5;
 	let w = rect.width - this.textPadding();
 
 	let selectedIdx = this._comList[this._pageIndex][index];
-
 	if (selectedIdx == "Craft Skill" && !this._bCanCraft){
 		this.changePaintOpacity(false);
 	} else{
@@ -960,7 +1065,7 @@ Window_CraftPalette.prototype.drawItem = function(index){
 	this.drawText(this._comList[this._pageIndex][index], rect.x, y, w , 'center');
 }
 
-Window_CraftPalette.prototype.buildComList = function(){
+Window_MagicCraftPalette.prototype.buildComList = function(){
 	this._comList = [];
 	this._intComList = [];
 	this._helpTxtList = [];
@@ -986,12 +1091,12 @@ Window_CraftPalette.prototype.buildComList = function(){
 			this._helpTxtList.push("Select an item for Catalyst " + String(i1+1));
 			this._totalItems++;
 		} else {
-		   this._comList.push(this._intComList);
-		   this._intComList = [];
-		   this._intComList.push("Catalyst " + String(i1+1));
-		   this._helpTxtList.push("Select an item for Catalyst " + String(i1+1));
-		   this._totalItems++;
-	   }
+		this._comList.push(this._intComList);
+		this._intComList = [];
+		this._intComList.push("Catalyst " + String(i1+1));
+		this._helpTxtList.push("Select an item for Catalyst " + String(i1+1));
+		this._totalItems++;
+	}
 	}
 
 	let miscCmds = ["Craft Skill", "Cancel"];
@@ -1003,113 +1108,32 @@ Window_CraftPalette.prototype.buildComList = function(){
 			this._helpTxtList.push(miscCmdTxt[i1]);
 			this._totalItems++;
 		} else {
-		   this._comList.push(this._intComList);
-		   this._intComList = [];
-		   this._intComList.push(miscCmds[i1]);
-		   this._helpTxtList.push(miscCmdTxt[i1]);
-		   this._totalItems++;
-	   }
-   }
-
-   if (this._intComList.length > 0){
-	   this._comList.push(this._intComList);
-	   this._intComList = [];
-   }
+		this._comList.push(this._intComList);
+		this._intComList = [];
+		this._intComList.push(miscCmds[i1]);
+		this._helpTxtList.push(miscCmdTxt[i1]);
+		this._totalItems++;
+	}
 }
 
-Window_CraftPalette.prototype.processCursorMove = function() {
-	let bResetSelect = false;
+if (this._intComList.length > 0){
+	this._comList.push(this._intComList);
+	this._intComList = [];
+}
+}
+
+Window_MagicCraftPalette.prototype.processCursorMove = function() {
 	if (this.isCursorMovable()) {
-		var lastIndex = this.index();
-
-		if (Input.isRepeated('down')) {
-			if (this._totalIndex + 1 > this._totalItems){
-				this._totalIndex = 0;
-			}
-
-			this._totalIndex++;
-
-			bResetSelect = this.setIndexPage();
-			this.cursorDown(Input.isTriggered('down'));
-			if (bResetSelect){
-				this.resetSelect("down");
-				bResetSelect = false;
-			}
-		} else if (Input.isRepeated('up')) {
-			if (this._totalIndex - 1 < 1){
-				this._totalIndex = this._totalItems;
-			} else {
-					this._totalIndex--;
-			}
-
-			bResetSelect = this.setIndexPage();
-			this.cursorUp(Input.isTriggered('up'));
-
-			if (bResetSelect){
-				this.resetSelect("up");
-				bResetSelect = false;
-			}
-		} else if (Input.isRepeated('right')) {
-			this.cursorRight(Input.isTriggered('right'));
-		} else if (Input.isRepeated('left')) {
-			this.cursorLeft(Input.isTriggered('left'));
-		} else if (!this.isHandled('pagedown') && Input.isTriggered('pagedown')) {
-			this.cursorPagedown();
-		} else if (!this.isHandled('pageup') && Input.isTriggered('pageup')) {
-			this.cursorPageup();
-		}
-
-		if (this.index() !== lastIndex) {
-			SoundManager.playCursor();
-		}
+		LMPGamesCore.functions.processCursorMove(this);
 	}
 };
 
-Window_CraftPalette.prototype.setIndexPage = function(lastIndex, direction){
-	if (this._totalIndex >= 1){
-		let calcPageIndex = Math.ceil(this._totalIndex / this.numVisibleRows())-1;
-
-		if (calcPageIndex != this._pageIndex){
-			this._pageIndex = calcPageIndex;
-			this.contents.clear();
-			this.drawAllItems();
-			return true;
-		}
-	} else {
-		this._pageIndex = 0;
-		this.contents.clear();
-		this.drawAllItems();
-		return true;
-	}
-
-	return false;
-}
-
-Window_CraftPalette.prototype.resetSelect = function(direction){
-	if (direction == "down") {
-		this._index = 0;
-		this.updateCursor();
-		this.select(0);
-	} else if (direction == "up") {
-		let nextIndex = this._comList[this._pageIndex].length-1;
-		this._index = nextIndex;
-		this.updateCursor();
-		this.select(nextIndex);
-	} else {
-		this._pageIndex = 0;
-		this._totalIndex = 1;
-		this._index = 0;
-		this.updateCursor();
-		this.select(0);
-	}
-}
-
-Window_CraftPalette.prototype.updateHelp = function(){
+Window_MagicCraftPalette.prototype.updateHelp = function(){
 	this._helpWindow.clear();
 	this._helpWindow.setText(this._helpTxtList[this._index]);
 };
 
-Window_CraftPalette.prototype.select = function(index){
+Window_MagicCraftPalette.prototype.select = function(index){
 	this._index = index;
 	if (this._comList.length > 0 && this._comList[this._pageIndex].length > 0){
 		if (index > -1 && index != this._comList[this._pageIndex].length && this._comList[this._pageIndex][index] != "Cancel"){
@@ -1154,13 +1178,13 @@ Window_CraftPalette.prototype.select = function(index){
 		}
 
 		this._stayCount = 0;
-	    this.ensureCursorVisible();
-	    this.updateCursor();
-	    this.callUpdateHelp();
+		this.ensureCursorVisible();
+		this.updateCursor();
+		this.callUpdateHelp();
 	}
 }
 
-Window_CraftPalette.prototype.processOk = function(){
+Window_MagicCraftPalette.prototype.processOk = function(){
 	if (this._index > -1 && this._index < this._comList[this._pageIndex].length){
 		if (this._comList[this._pageIndex][this._index] != 'Cancel'){
 			if ((this._comList[this._pageIndex][this._index] == "Craft Skill" && this._bCanCraft) ||
@@ -1177,13 +1201,13 @@ Window_CraftPalette.prototype.processOk = function(){
 	}
 }
 
-Window_CraftPalette.prototype.refresh = function(){
+Window_MagicCraftPalette.prototype.refresh = function(){
 	let selCats = this._selectedCatalysts.filter(sc => sc != 0);
 	let selCmps = this._selectedComponents.filter(sc => sc != 0)
 	let craftableSkillList = [];
-	if (this._craftListWnd != null) {
-		this._craftListWnd.updateSelectedComponents(selCmps);
-		craftableSkillList = this._craftListWnd.getCraftList();
+	if (this._blueprintListWnd != null) {
+		this._blueprintListWnd.updateSelectedComponents(selCmps);
+		craftableSkillList = this._blueprintListWnd.getCraftList();
 	}
 
 	if (craftableSkillList.length > 0){
@@ -1197,20 +1221,18 @@ Window_CraftPalette.prototype.refresh = function(){
 	this.drawAllItems();
 }
 
-Window_CraftPalette.prototype.deactivate = function(){
-	Window_Base.prototype.deactivate.call(this);
-}
 
+/* Window_MagicCraftComponentSelection Functions */
+Window_MagicCraftComponentSelection.prototype = Object.create(Window_Selectable.prototype);
+Window_MagicCraftComponentSelection.prototype.constructor = Window_MagicCraftComponentSelection;
 
-/* Window_CraftComponentSelection Functions */
-Window_CraftComponentSelection.prototype = Object.create(Window_Selectable.prototype);
-Window_CraftComponentSelection.prototype.constructor = Window_CraftComponentSelection;
-
-Window_CraftComponentSelection.prototype.initialize = function(x, y, w, h, infoWnd){
+Window_MagicCraftComponentSelection.prototype.initialize = function(x, y, w, h, infoWnd){
 	this._width = w;
 	this._height = h;
 	this._x = x;
 	this._y = y;
+	Window_Selectable.prototype.initialize.call(this, x, y, w, h);
+
 	this._infoWnd = infoWnd;
 	this._comList = [];
 	this._cmpIdList = [];
@@ -1221,19 +1243,38 @@ Window_CraftComponentSelection.prototype.initialize = function(x, y, w, h, infoW
 	this._pageIndex = 0;
 	this._totalIndex = 1;
 	this._totalItems = 0;
-
-	Window_Selectable.prototype.initialize.call(this, x, y, w, h);
 	this.refresh();
 }
 
-Window_CraftComponentSelection.prototype.buildComList = function(){
+//Getters
+Window_MagicCraftComponentSelection.prototype.getWidth = function() { return this._width; }
+Window_MagicCraftComponentSelection.prototype.getHeight = function() { return this._height; }
+Window_MagicCraftComponentSelection.prototype.getX = function() { return this._x; }
+Window_MagicCraftComponentSelection.prototype.getY = function() { return this._y; }
+Window_MagicCraftComponentSelection.prototype.getSelectedComponent = function() { return this._selectedCmpId; }
+Window_MagicCraftComponentSelection.prototype.maxItems = function() { return (this._comList ? this._comList[this._pageIndex].length : 1); }
+Window_MagicCraftComponentSelection.prototype.numVisibleRows = function() { return 4; }
+Window_MagicCraftComponentSelection.prototype.itemHeight = function() {
+	let clientHeight = this._height - this.padding * 2;
+	return Math.floor(clientHeight / this.numVisibleRows());
+}
+
+Window_MagicCraftComponentSelection.prototype.itemWidth = function() {
+	return Math.floor((this._width - this.padding * 2 +
+		this.spacing()) / this.maxCols() - this.spacing());
+}
+
+//Setters
+
+
+//Doers
+Window_MagicCraftComponentSelection.prototype.buildComList = function(){
 	this._comList = [];
 	this._intComList = [];
 	this._intCmpIdList = [];
 	this._helpTxtList = [];
 	this._totalItems = 0;
 	this._cmpIdList = [];
-
 	let actSkills = [];
 	let partyMemSkillData = [];
 
@@ -1253,7 +1294,6 @@ Window_CraftComponentSelection.prototype.buildComList = function(){
 
 	for (let sklId of Object.keys(partyMemSkillData)){
 		let skl = partyMemSkillData[sklId];
-
 		if (this._intComList.length < this.numVisibleRows()){
 			this._intComList.push(skl.name);
 			this._intCmpIdList.push(skl.id);
@@ -1298,9 +1338,8 @@ Window_CraftComponentSelection.prototype.buildComList = function(){
 	}
 }
 
-Window_CraftComponentSelection.prototype.getTreeSkills = function(currSchool, rtnSkills){
+/*Window_MagicCraftComponentSelection.prototype.getTreeSkills = function(currSchool, rtnSkills){
 	let schoolSkills = [];
-
 	if (Object.keys(currSchool.Trees).length > 0){
 		for(let key of Object.keys(currSchool.Trees)){
 			let currTree = currSchool.Trees[key];
@@ -1318,126 +1357,24 @@ Window_CraftComponentSelection.prototype.getTreeSkills = function(currSchool, rt
 	}
 
 	return rtnSkills;
-}
+}*/
 
-Window_CraftComponentSelection.prototype.getWidth = function() { return this._width; }
-Window_CraftComponentSelection.prototype.getHeight = function() { return this._height; }
-Window_CraftComponentSelection.prototype.getX = function() { return this._x; }
-Window_CraftComponentSelection.prototype.getY = function() { return this._y; }
-Window_CraftComponentSelection.prototype.getSelectedComponent = function() { return this._selectedCmpId; }
-Window_CraftComponentSelection.prototype.maxItems = function() { return (this._comList ? this._comList[this._pageIndex].length : 1); }
-Window_CraftComponentSelection.prototype.numVisibleRows = function() { return 4; }
-Window_CraftComponentSelection.prototype.itemHeight = function() {
-	let clientHeight = this._height - this.padding * 2;
-	return Math.floor(clientHeight / this.numVisibleRows());
-}
-
-Window_CraftComponentSelection.prototype.itemWidth = function() {
-    return Math.floor((this._width - this.padding * 2 +
-                   this.spacing()) / this.maxCols() - this.spacing());
-}
-
-Window_CraftComponentSelection.prototype.processCursorMove = function() {
-	let bResetSelect = false;
-    if (this.isCursorMovable()) {
-        var lastIndex = this.index();
-
-        if (Input.isRepeated('down')) {
-			if (this._totalIndex + 1 > this._totalItems){
-				this._totalIndex = 0;
-			}
-
-			this._totalIndex++;
-
-			bResetSelect = this.setIndexPage();
-            this.cursorDown(Input.isTriggered('down'));
-			if (bResetSelect){
-				this.resetSelect("down");
-				bResetSelect = false;
-			}
-        } else if (Input.isRepeated('up')) {
-			if (this._totalIndex - 1 < 1){
-				this._totalIndex = this._totalItems;
-			} else {
-					this._totalIndex--;
-			}
-
-			bResetSelect = this.setIndexPage();
-            this.cursorUp(Input.isTriggered('up'));
-
-			if (bResetSelect){
-				this.resetSelect("up");
-				bResetSelect = false;
-			}
-        } else if (Input.isRepeated('right')) {
-            this.cursorRight(Input.isTriggered('right'));
-        } else if (Input.isRepeated('left')) {
-            this.cursorLeft(Input.isTriggered('left'));
-        } else if (!this.isHandled('pagedown') && Input.isTriggered('pagedown')) {
-            this.cursorPagedown();
-        } else if (!this.isHandled('pageup') && Input.isTriggered('pageup')) {
-            this.cursorPageup();
-        }
-
-        if (this.index() !== lastIndex) {
-            SoundManager.playCursor();
-        }
-    }
+Window_MagicCraftComponentSelection.prototype.processCursorMove = function() {
+	if (this.isCursorMovable()) {
+		LMPGamesCore.functions.processCorsorMove(this);
+	}
 };
 
-Window_CraftComponentSelection.prototype.setIndexPage = function(lastIndex, direction){
-	if (this._totalIndex >= 1){
-		let calcPageIndex = Math.ceil(this._totalIndex / this.numVisibleRows())-1;
-
-		if (calcPageIndex != this._pageIndex){
-			this._pageIndex = calcPageIndex;
-			this.contents.clear();
-			this.drawAllItems();
-			return true;
-		}
-	} else {
-		this._pageIndex = 0;
-		this.contents.clear();
-		this.drawAllItems();
-		return true;
-	}
-
-	return false;
-}
-
-Window_CraftComponentSelection.prototype.resetSelect = function(direction){
-	if (direction == "down") {
-		this._index = 0;
-		this.updateCursor();
-		this.select(0);
-	} else if (direction == "up") {
-		let nextIndex = this._comList[this._pageIndex].length-1;
-		this._index = nextIndex;
-		this.updateCursor();
-		this.select(nextIndex);
-	} else {
-		this._pageIndex = 0;
-		this._totalIndex = 0;
-		this._index = 0;
-		this.updateCursor();
-		this.select(0);
-	}
-}
-
-Window_CraftComponentSelection.prototype.drawItem = function(index){
+Window_MagicCraftComponentSelection.prototype.drawItem = function(index){
 	let rect = this.itemRectForText(index);
 	let x = rect.width/2;
 	let y = rect.y + (rect.height/2) - this.lineHeight() * 0.5;
 	let w = rect.width - this.textPadding();
 
-	/*if (this._index == this.bottomRow()){
-			index = this._index + 1;
-	}*/
-
 	this.drawText(this._comList[this._pageIndex][index], rect.x, y, w , 'center');
 }
 
-Window_CraftComponentSelection.prototype.select = function(index){
+Window_MagicCraftComponentSelection.prototype.select = function(index){
 	this._index = index;
 	if (this._comList.length > 0 && this._comList[this._pageIndex].length > 0){
 		if (index > -1 && index != this._comList[this._pageIndex].length && this._comList[this._pageIndex][index] != "Cancel"){
@@ -1459,7 +1396,7 @@ Window_CraftComponentSelection.prototype.select = function(index){
 	}
 }
 
-Window_CraftComponentSelection.prototype.processOk = function(){
+Window_MagicCraftComponentSelection.prototype.processOk = function(){
 	if (this._index > -1 && this._index < this._comList[this._pageIndex].length){
 		if (this._comList[this._pageIndex][this._index] !== "Cancel"){
 			this._selectedCmpId = this._cmpIdList[this._pageIndex][this._index];
@@ -1472,7 +1409,7 @@ Window_CraftComponentSelection.prototype.processOk = function(){
 	}
 }
 
-Window_CraftComponentSelection.prototype.refresh = function(){
+Window_MagicCraftComponentSelection.prototype.refresh = function(){
 	if (this.contents){
 		this.contents.clear();
 		this.buildComList();
@@ -1481,15 +1418,17 @@ Window_CraftComponentSelection.prototype.refresh = function(){
 }
 
 
-/* Window_CraftCatalystSelection Functions */
-Window_CraftCatalystSelection.prototype = Object.create(Window_Selectable.prototype);
-Window_CraftCatalystSelection.prototype.constructor = Window_CraftCatalystSelection;
+/* Window_MagicCraftCatalystSelection Functions */
+Window_MagicCraftCatalystSelection.prototype = Object.create(Window_Selectable.prototype);
+Window_MagicCraftCatalystSelection.prototype.constructor = Window_MagicCraftCatalystSelection;
 
-Window_CraftCatalystSelection.prototype.initialize = function(x, y, w, h, infoWnd, helpWnd){
+Window_MagicCraftCatalystSelection.prototype.initialize = function(x, y, w, h, infoWnd, helpWnd){
 	this._width = w;
 	this._height = h;
 	this._x = x;
 	this._y = y;
+	Window_Selectable.prototype.initialize.call(this, x, y, w, h);
+	
 	this._infoWnd = infoWnd;
 	this._helpWindow = helpWnd;
 	this._comList = [];
@@ -1501,27 +1440,48 @@ Window_CraftCatalystSelection.prototype.initialize = function(x, y, w, h, infoWn
 	this._totalItems = 0;
 	this._selectedCatId = 0;
 	this._selectedCatalysts = {};
-
-	Window_Selectable.prototype.initialize.call(this, x, y, w, h);
 	this.refresh();
 }
 
-Window_CraftCatalystSelection.prototype.buildComList = function(){
+//Getters
+Window_MagicCraftCatalystSelection.prototype.getWidth = function() { return this._width; }
+Window_MagicCraftCatalystSelection.prototype.getHeight = function() { return this._height; }
+Window_MagicCraftCatalystSelection.prototype.getX = function() { return this._x; }
+Window_MagicCraftCatalystSelection.prototype.getY = function() { return this._y; }
+Window_MagicCraftCatalystSelection.prototype.maxItems = function() { return (this._comList ? this._comList[this._pageIndex].length : 1); }
+Window_MagicCraftCatalystSelection.prototype.numVisibleRows = function() { return 4; }
+Window_MagicCraftCatalystSelection.prototype.itemHeight = function() {
+	let clientHeight = this._height - this.padding * 2;
+	return Math.floor(clientHeight / this.numVisibleRows());
+}
+
+Window_MagicCraftCatalystSelection.prototype.itemWidth = function() {
+	return Math.floor((this._width - this.padding * 2 +
+		this.spacing()) / this.maxCols() - this.spacing());
+}
+
+//Setters
+Window_MagicCraftCatalystSelection.prototype.getSelectedCatalyst = function() { return this._selectedCatId; }
+Window_MagicCraftCatalystSelection.prototype.setSelectedCatalysts = function(selCats) {
+	this._selectedCatalysts = selCats;
+	this.refresh();
+}
+
+//Doers
+Window_MagicCraftCatalystSelection.prototype.buildComList = function(){
 	this._comList = [];
 	this._catIdList = [];
 	this._intComList = [];
 	this._intCatIdList = [];
 	this._totalItems = 0;
-
-	let selectedItemsData = {};
+	let numOfSelectedCatalyts = {};
 	let selectedCatIds = Object.values(this._selectedCatalysts);
 
-	for (let i1 = 0; i1 < selectedCatIds.length; i1++){
-		let currItmId = selectedCatIds[i1];
-		if (selectedItemsData.hasOwnProperty(currItmId)){
-			selectedItemsData[currItmId] += 1;
+	for (let itmId of selectedCatIds){
+		if (numOfSelectedCatalyts.hasOwnProperty(itmId)){
+			numOfSelectedCatalyts[itmId] += 1;
 		} else{
-			selectedItemsData[currItmId] = 1;
+			numOfSelectedCatalyts[itmId] = 1;
 		}
 	}
 
@@ -1529,44 +1489,27 @@ Window_CraftCatalystSelection.prototype.buildComList = function(){
 	let invItemData = $dataItems.filter(itm => itm && partyInvItems.hasOwnProperty(itm.id));
 	let craftingItmData = [];
 	for (let itm of invItemData){
-		let pluginData = LMPGamesCore.pluginData.magicCrafting;
-		let pluginDataItem = pluginData.itemData.find(pdi => pdi && pdi.id == itm.id && pdi.IsCatalyst);
-		if (pluginDataItem){
-			craftingItmData.push(itm);
-		}
-	}
+		let pluginDataItem = LMPGamesCore.pluginData.magicCrafting.itemData
+			.find(pdi => pdi && pdi.id == itm.id && pdi.IsCatalyst);
 
-	let invCraftingItems = {};
-	for (let itm of craftingItmData){
-		let currItm = $dataItems.find(item => item && item.id == itm.id);
-		if (!invCraftingItems.hasOwnProperty(itm.id)){
-			invCraftingItems[itm.id] = $gameParty.numItems(currItm);
-		}
-	}
-
-	for (let invId of Object.keys(invCraftingItems)){
-		if (selectedItemsData.hasOwnProperty(invId)){
-			let invAmt = invCraftingItems[invId];
-			let selectedAmt = selectedItemsData[invId];
-
-			if (invAmt - selectedAmt > 0){
-				invCraftingItems[invId] -= selectedAmt;
-			} else{
-				invCraftingItems[invId] = 0;
+		if (pluginDataItem) {
+			if (numOfSelectedCatalyts.hasOwnProperty(itm.id)) {
+				if (numOfSelectedCatalyts[itm.id] < $gameParty.numItems(itm)) {
+					craftingItmData.push(itm);
+				}
+			} else {
+				craftingItmData.push(itm);
 			}
-		} else {
-
 		}
 	}
-
 
 	for (let itm of craftingItmData){
 		let comName = "";
 		comName += itm.name;
 
-		if (invCraftingItems.hasOwnProperty(itm.id)){
+		/*if (invCraftingItems.hasOwnProperty(itm.id)){
 			comName += " x" + String(invCraftingItems[itm.id]);
-		}
+		}*/ //Shows num left of an item in inv.  Should this be kept?  Maybe an optional feature?
 
 		if (this._intComList.length < this.numVisibleRows()){
 			this._intComList.push(comName);
@@ -1612,116 +1555,13 @@ Window_CraftCatalystSelection.prototype.buildComList = function(){
 	}
 }
 
-Window_CraftCatalystSelection.prototype.getWidth = function() { return this._width; }
-Window_CraftCatalystSelection.prototype.getHeight = function() { return this._height; }
-Window_CraftCatalystSelection.prototype.getX = function() { return this._x; }
-Window_CraftCatalystSelection.prototype.getY = function() { return this._y; }
-Window_CraftCatalystSelection.prototype.getSelectedCatalyst = function() { return this._selectedCatId; }
-Window_CraftCatalystSelection.prototype.setSelectedCatalysts = function(selCats) {
-	this._selectedCatalysts = selCats;
-	this.refresh();
-}
-
-Window_CraftCatalystSelection.prototype.maxItems = function() { return (this._comList ? this._comList[this._pageIndex].length : 1); }
-Window_CraftCatalystSelection.prototype.numVisibleRows = function() { return 4; }
-Window_CraftCatalystSelection.prototype.itemHeight = function() {
-	let clientHeight = this._height - this.padding * 2;
-	return Math.floor(clientHeight / this.numVisibleRows());
-}
-
-Window_CraftCatalystSelection.prototype.itemWidth = function() {
-    return Math.floor((this._width - this.padding * 2 +
-                   this.spacing()) / this.maxCols() - this.spacing());
-}
-
-Window_CraftCatalystSelection.prototype.processCursorMove = function() {
-	let bResetSelect = false;
-    if (this.isCursorMovable()) {
-        var lastIndex = this.index();
-
-        if (Input.isRepeated('down')) {
-			if (this._totalIndex + 1 > this._totalItems){
-				this._totalIndex = 0;
-			}
-
-			this._totalIndex++;
-
-			bResetSelect = this.setIndexPage();
-            this.cursorDown(Input.isTriggered('down'));
-			if (bResetSelect){
-				this.resetSelect("down");
-				bResetSelect = false;
-			}
-        } else if (Input.isRepeated('up')) {
-			if (this._totalIndex - 1 < 1){
-				this._totalIndex = this._totalItems;
-			} else {
-					this._totalIndex--;
-			}
-
-			bResetSelect = this.setIndexPage();
-            this.cursorUp(Input.isTriggered('up'));
-
-			if (bResetSelect){
-				this.resetSelect("up");
-				bResetSelect = false;
-			}
-        } else if (Input.isRepeated('right')) {
-            this.cursorRight(Input.isTriggered('right'));
-        } else if (Input.isRepeated('left')) {
-            this.cursorLeft(Input.isTriggered('left'));
-        } else if (!this.isHandled('pagedown') && Input.isTriggered('pagedown')) {
-            this.cursorPagedown();
-        } else if (!this.isHandled('pageup') && Input.isTriggered('pageup')) {
-            this.cursorPageup();
-        }
-
-        if (this.index() !== lastIndex) {
-            SoundManager.playCursor();
-        }
-    }
+Window_MagicCraftCatalystSelection.prototype.processCursorMove = function() {
+	if (this.isCursorMovable()) {
+		LMPGamesCore.functions.processCursorMove(this);
+	}
 };
 
-Window_CraftCatalystSelection.prototype.setIndexPage = function(lastIndex, direction){
-	if (this._totalIndex >= 1){
-		let calcPageIndex = Math.ceil(this._totalIndex / this.numVisibleRows())-1;
-
-		if (calcPageIndex != this._pageIndex){
-			this._pageIndex = calcPageIndex;
-			this.contents.clear();
-			this.drawAllItems();
-			return true;
-		}
-	} else {
-		this._pageIndex = 0;
-		this.contents.clear();
-		this.drawAllItems();
-		return true;
-	}
-
-	return false;
-}
-
-Window_CraftCatalystSelection.prototype.resetSelect = function(direction){
-	if (direction == "down") {
-		this._index = 0;
-		this.updateCursor();
-		this.select(0);
-	} else if (direction == "up") {
-		let nextIndex = this._comList[this._pageIndex].length-1
-		this._index = nextIndex;
-		this.updateCursor();
-		this.select(nextIndex);
-	} else {
-		this._pageIndex = 0;
-		this._totalIndex = 0;
-		this._index = 0;
-		this.updateCursor();
-		this.select(0);
-	}
-}
-
-Window_CraftCatalystSelection.prototype.drawItem = function(index){
+Window_MagicCraftCatalystSelection.prototype.drawItem = function(index){
 	let rect = this.itemRectForText(index);
 	let x = rect.width/2;
 	let y = rect.y + (rect.height/2) - this.lineHeight() * 0.5;
@@ -1737,7 +1577,7 @@ Window_CraftCatalystSelection.prototype.drawItem = function(index){
 	this.drawText(label, rect.x, y, w , 'center');
 }
 
-Window_CraftCatalystSelection.prototype.select = function(index){
+Window_MagicCraftCatalystSelection.prototype.select = function(index){
 	this._index = index;
 	if (this._comList.length > 0 && this._comList[this._pageIndex].length > 0){
 		if (index > -1 && index != this._comList[this._pageIndex].length && this._comList[this._pageIndex][index] != "Cancel"){
@@ -1759,15 +1599,11 @@ Window_CraftCatalystSelection.prototype.select = function(index){
 	}
 }
 
-Window_CraftCatalystSelection.prototype.processOk = function(){
+Window_MagicCraftCatalystSelection.prototype.processOk = function(){
 	if (this._index > -1 && this._index < this._comList[this._pageIndex].length){
 		if (this._comList[this._pageIndex][this._index] !== "Cancel"){
-			if (this.bCanUse(this._comList[this._pageIndex][this._index])){
-				this._selectedCatId = this._catIdList[this._pageIndex][this._index];
-				Window_Selectable.prototype.processOk.apply(this);
-			} else {
-				SoundManager.playCancel();
-			}
+			this._selectedCatId = this._catIdList[this._pageIndex][this._index];
+			Window_Selectable.prototype.processOk.apply(this);
 		} else {
 			Window_Selectable.prototype.processCancel.apply(this);
 		}
@@ -1776,7 +1612,7 @@ Window_CraftCatalystSelection.prototype.processOk = function(){
 	}
 }
 
-Window_CraftCatalystSelection.prototype.refresh = function(){
+Window_MagicCraftCatalystSelection.prototype.refresh = function(){
 	if (this.contents){
 		this.contents.clear();
 		this.buildComList();
@@ -1784,45 +1620,32 @@ Window_CraftCatalystSelection.prototype.refresh = function(){
 	}
 }
 
-Window_CraftCatalystSelection.prototype.drawTextEx = function(text, x, y) {
-    if (text) {
-        let textState = { index: 0, x: x, y: y, left: x };
-        textState.text = this.convertEscapeCharacters(text);
-        textState.height = this.calcTextHeight(textState, false);
-        while (textState.index < textState.text.length) {
-            this.processCharacter(textState);
-        }
-        return textState.x - x;
-    } else {
-        return 0;
-    }
+Window_MagicCraftCatalystSelection.prototype.drawTextEx = function(text, x, y) {
+	if (text) {
+		let textState = { index: 0, x: x, y: y, left: x };
+		textState.text = this.convertEscapeCharacters(text);
+		textState.height = this.calcTextHeight(textState, false);
+		while (textState.index < textState.text.length) {
+			this.processCharacter(textState);
+		}
+		return textState.x - x;
+	} else {
+		return 0;
+	}
 };
 
-Window_CraftCatalystSelection.prototype.bCanUse = function(label){
-	let bCanUseItem = false;
-	let labelArr = label.split(" x");
 
-	if (labelArr.length > 1){
-		if (parseInt(labelArr[1])){
-			if (parseInt(labelArr[1]) > 0){
-				bCanUseItem = true;
-			}
-		}
-	}
+/* Window_MagicCraftBlueprintList Functions*/ 
+Window_MagicCraftBlueprintList.prototype = Object.create(Window_Selectable.prototype);
+Window_MagicCraftBlueprintList.prototype.constructor = Window_MagicCraftBlueprintList;
 
-	return bCanUseItem;
-}
-
-
-/* Window_CraftBlueprintList */
-Window_CraftBlueprintList.prototype = Object.create(Window_Selectable.prototype);
-Window_CraftBlueprintList.prototype.constructor = Window_CraftBlueprintList;
-
-Window_CraftBlueprintList.prototype.initialize = function(x, y, w, h, infoWnd, selectedComponents, costWnd){
+Window_MagicCraftBlueprintList.prototype.initialize = function(x, y, w, h, infoWnd, selectedComponents, costWnd){
 	this._width = w;
 	this._height = h;
 	this._x = x;
 	this._y = y;
+	Window_Selectable.prototype.initialize.call(this, x, y, w, h);
+
 	this._comList = [];
 	this._intComList = [];
 	this._pageIndex = 0;
@@ -1835,12 +1658,29 @@ Window_CraftBlueprintList.prototype.initialize = function(x, y, w, h, infoWnd, s
 	this._selectedComponents = selectedComponents;
 	this._selectedBaseId = 0;
 	this._bCanCraft = false;
-
-	Window_Selectable.prototype.initialize.call(this, x, y, w, h);
 	this.buildComList();
 }
 
-Window_CraftBlueprintList.prototype.updateSelectedComponents = function (selCmps){
+//Getters
+Window_MagicCraftBlueprintList.prototype.getWidth = function() { return this._width; }
+Window_MagicCraftBlueprintList.prototype.getHeight = function() { return this._height; }
+Window_MagicCraftBlueprintList.prototype.getX = function() { return this._x; }
+Window_MagicCraftBlueprintList.prototype.getY = function() { return this._y; }
+Window_MagicCraftBlueprintList.prototype.getSelectedBaseId = function() { return this._selectedBaseId; }
+Window_MagicCraftBlueprintList.prototype.maxItems = function() { return (this._comList ? this._comList[this._pageIndex].length : 1); }
+Window_MagicCraftBlueprintList.prototype.numVisibleRows = function() { return 4; }
+Window_MagicCraftBlueprintList.prototype.itemHeight = function() {
+	let clientHeight = this._height - this.padding * 2;
+	return Math.floor(clientHeight / this.numVisibleRows());
+}
+
+Window_MagicCraftBlueprintList.prototype.itemWidth = function() {
+	return Math.floor((this._width - this.padding * 2 +
+				this.spacing()) / this.maxCols() - this.spacing());
+}
+
+//Setters
+Window_MagicCraftBlueprintList.prototype.updateSelectedComponents = function (selCmps){
 	this._selectedComponents = selCmps;
 	this._pageIndex = 0;
 	this._totalItems = 0;
@@ -1848,7 +1688,8 @@ Window_CraftBlueprintList.prototype.updateSelectedComponents = function (selCmps
 	this.refresh();
 }
 
-Window_CraftBlueprintList.prototype.drawItem = function(index){
+//Doers
+Window_MagicCraftBlueprintList.prototype.drawItem = function(index){
 	let rect = this.itemRectForText(index);
 	let x = rect.width/2;
 	let y = rect.y + (rect.height/2) - this.lineHeight() * 0.5;
@@ -1888,54 +1729,54 @@ Window_CraftBlueprintList.prototype.drawItem = function(index){
 	this.drawText(this._comList[this._pageIndex][index], rect.x, y, w , 'center');
 }
 
-Window_CraftBlueprintList.prototype.buildComList = function(){
+Window_MagicCraftBlueprintList.prototype.buildComList = function(){
 	this._comList = [];
 	this._intComList = [];
 	this._totalItems = 0;
 	this._baseSkillIdList = [];
 	this._intBaseSkillIdList = [];
+	let pluginDataSkills = LMPGamesCore.pluginData.magicCrafting.skillData
+		.filter(skl => skl && skl.CanCraft && skl.IsRecipe && (bPreventRename &&
+			(maxRefineLevel == 0 || (maxRefineLevel > skl.TimesCrafted)) ? true : false));  //Shold this get overriden in NT?
 
-	let pluginData = LMPGamesCore.pluginData.magicCrafting;
-	let pluginDataSkills = pluginData.skillData.filter(skl => skl && skl.CanCraft && skl.IsRecipe && (bPreventRename && (maxRefineLevel == 0 || (maxRefineLevel > skl.TimesCrafted)) ? true : false));
 	let pluginDataSkillIds = [];
-	for (let skill of pluginDataSkills){
+	for (let skill of pluginDataSkills) {
 		pluginDataSkillIds.push(skill.id);
 	}
 
-	let craftableSpells = $dataSkills.filter(skl => skl && pluginDataSkillIds.contains(skl.id));
+	let craftableSpells = $dataSkills.filter(skl => skl && pluginDataSkillIds.includes(skl.id));
 	let displaySpells = [];
 	let selectedCmpIds = Object.values(this._selectedComponents);
 	let selectedElements = selectedCmpIds.filter(sk => sk)
-		.reduce((obj, sk) =>{
-			if ($dataSkills.hasOwnProperty(sk)){
-				obj.push($dataSkills[sk].damage.elementId);
+		.reduce((obj, sk) => {
+			let selectedSpellData = $dataSkills.find(skl => skl && skl.id == sk);
+			if (selectedSpellData) {
+				obj.push(selectedSpellData.damage.elementId);
 			}
 			return obj;
 		}, []);
 
-	for (let spell of craftableSpells){
-		let spellPluginData = pluginData.skillData[spell.id];
-		if (spellPluginData.ComponentElements.length > 0){
-			if (this.meetsComponentRequirements(spellPluginData.ComponentElements, selectedElements)){
+	for (let spell of craftableSpells) {
+		let spellPluginData = pluginDataSkills[spell.id];
+		if (spellPluginData && spellPluginData.ComponentElements &&
+			spellPluginData.ComponentElements.length > 0) {
+			if (this.meetsComponentRequirements(spellPluginData.ComponentElements, selectedElements)) {
 				displaySpells.push(spell);
 			}
 		}
 	}
 
-	if (craftingDisplayMode == 1){
+	if (craftingDisplayMode == 1) {
 		LMPGamesCore.functions.setObfuscationChar(obfuscationChar);
 		LMPGamesCore.functions.setMaxObfuscationChars(maxObfusChars);
 	}
 
-	for (let i1 = 0; i1 < displaySpells.length; i1++){
-		let spell = displaySpells[i1];
+	for (let spell of displaySpells) {
 		let spellPluginData = pluginData.skillData[spell.id];
 		let name = spell.name;
-
-		if (!spellPluginData.CraftingShowName){
+		if (!spellPluginData.CraftingShowName) {
 			let newSkillName = "";
-
-			if (craftingDisplayMode == 1){
+			if (craftingDisplayMode == 1) {
 				newSkillName = LMPGames.functions.obfuscateText(name);
 			} else {
 				newSkillName = name;
@@ -1944,7 +1785,7 @@ Window_CraftBlueprintList.prototype.buildComList = function(){
 			name = newSkillName;
 		}
 
-		if (this._intComList.length < this.numVisibleRows()){
+		if (this._intComList.length < this.numVisibleRows()) {
 			this._intComList.push(name);
 			this._intBaseSkillIdList.push(spell.id);
 			this._totalItems++;
@@ -1961,8 +1802,8 @@ Window_CraftBlueprintList.prototype.buildComList = function(){
 		}
 	}
 
-	for (let i1 = 0; i1 < 1; i1++){
-		if (this._intComList.length < this.numVisibleRows()){
+	for (let i1 = 0; i1 < 1; i1++) {
+		if (this._intComList.length < this.numVisibleRows()) {
 			this._intComList.push("Cancel");
 			this._intBaseSkillIdList.push(-1);
 			this._totalItems++;
@@ -1979,7 +1820,7 @@ Window_CraftBlueprintList.prototype.buildComList = function(){
 		}
 	}
 
-	if (this._intComList.length > 0){
+	if (this._intComList.length > 0) {
 		this._comList.push(this._intComList);
 		this._baseSkillIdList.push(this._intBaseSkillIdList);
 
@@ -1988,7 +1829,7 @@ Window_CraftBlueprintList.prototype.buildComList = function(){
 	}
 }
 
-Window_CraftBlueprintList.prototype.meetsComponentRequirements = function(requiredElements, selectedElements){
+Window_MagicCraftBlueprintList.prototype.meetsComponentRequirements = function(requiredElements, selectedElements){
 	let numOfRequiredElements = {};
 	let bMeetsElementalRequirements = true;
 
@@ -2014,111 +1855,13 @@ Window_CraftBlueprintList.prototype.meetsComponentRequirements = function(requir
 	return bMeetsElementalRequirements;
 }
 
-Window_CraftBlueprintList.prototype.processCursorMove = function() {
-	let bResetSelect = false;
-    if (this.isCursorMovable()) {
-        var lastIndex = this.index();
-
-        if (Input.isRepeated('down')) {
-			if (this._totalIndex + 1 > this._totalItems){
-				this._totalIndex = 0;
-			}
-
-			this._totalIndex++;
-
-			bResetSelect = this.setIndexPage();
-            this.cursorDown(Input.isTriggered('down'));
-			if (bResetSelect){
-				this.resetSelect("down");
-				bResetSelect = false;
-			}
-        } else if (Input.isRepeated('up')) {
-			if (this._totalIndex - 1 < 1){
-				this._totalIndex = this._totalItems;
-			} else {
-					this._totalIndex--;
-			}
-
-			bResetSelect = this.setIndexPage();
-            this.cursorUp(Input.isTriggered('up'));
-
-			if (bResetSelect){
-				this.resetSelect("up");
-				bResetSelect = false;
-			}
-        } else if (Input.isRepeated('right')) {
-            this.cursorRight(Input.isTriggered('right'));
-        } else if (Input.isRepeated('left')) {
-            this.cursorLeft(Input.isTriggered('left'));
-        } else if (!this.isHandled('pagedown') && Input.isTriggered('pagedown')) {
-            this.cursorPagedown();
-        } else if (!this.isHandled('pageup') && Input.isTriggered('pageup')) {
-            this.cursorPageup();
-        }
-
-        if (this.index() !== lastIndex) {
-            SoundManager.playCursor();
-        }
-    }
+Window_MagicCraftBlueprintList.prototype.processCursorMove = function() {
+	if (this.isCursorMovable()) {
+		LMPGamesCore.functions.processCursorMove(this);
+	}
 };
 
-Window_CraftBlueprintList.prototype.setIndexPage = function(lastIndex, direction){
-	if (this._totalIndex >= 1){
-		let calcPageIndex = Math.ceil(this._totalIndex / this.numVisibleRows())-1;
-
-		if (calcPageIndex != this._pageIndex){
-			this._pageIndex = calcPageIndex;
-			this.contents.clear();
-			this.drawAllItems();
-			return true;
-		}
-	} else {
-		this._pageIndex = 0;
-		this.contents.clear();
-		this.drawAllItems();
-		return true;
-	}
-
-	return false;
-}
-
-Window_CraftBlueprintList.prototype.resetSelect = function(direction){
-	if (direction == "down") {
-		this._index = 0;
-		this.updateCursor();
-		this.select(0);
-	} else if (direction == "up") {
-		let nextIndex = this._comList[this._pageIndex].length-1;
-		this._index = nextIndex;
-		this.updateCursor();
-		this.select(nextIndex);
-	} else {
-		this._pageIndex = 0;
-		this._totalIndex = 0;
-		this._index = 0;
-		this.updateCursor();
-		this.select(0);
-	}
-}
-
-Window_CraftBlueprintList.prototype.getWidth = function() { return this._width; }
-Window_CraftBlueprintList.prototype.getHeight = function() { return this._height; }
-Window_CraftBlueprintList.prototype.getX = function() { return this._x; }
-Window_CraftBlueprintList.prototype.getY = function() { return this._y; }
-Window_CraftBlueprintList.prototype.getSelectedBaseId = function() { return this._selectedBaseId; }
-Window_CraftBlueprintList.prototype.maxItems = function() { return (this._comList ? this._comList[this._pageIndex].length : 1); }
-Window_CraftBlueprintList.prototype.numVisibleRows = function() { return 4; }
-Window_CraftBlueprintList.prototype.itemHeight = function() {
-	let clientHeight = this._height - this.padding * 2;
-	return Math.floor(clientHeight / this.numVisibleRows());
-}
-
-Window_CraftBlueprintList.prototype.itemWidth = function() {
-    return Math.floor((this._width - this.padding * 2 +
-                   this.spacing()) / this.maxCols() - this.spacing());
-}
-
-Window_CraftBlueprintList.prototype.select = function(index){
+Window_MagicCraftBlueprintList.prototype.select = function(index){
 	this._index = index;
 	let itemCost = 0;
 	let goldCost = 0;
@@ -2168,7 +1911,7 @@ Window_CraftBlueprintList.prototype.select = function(index){
 	}
 }
 
-Window_CraftBlueprintList.prototype.processOk = function(){
+Window_MagicCraftBlueprintList.prototype.processOk = function(){
 	if (this._index > -1 && this._index < this._comList[this._pageIndex].length){
 		if (this._comList[this._pageIndex][this._index] !== "Cancel"){
 			this._selectedBaseId = this._baseSkillIdList[this._pageIndex][this._index];
@@ -2186,7 +1929,7 @@ Window_CraftBlueprintList.prototype.processOk = function(){
 	}
 }
 
-Window_CraftBlueprintList.prototype.refresh = function(){
+Window_MagicCraftBlueprintList.prototype.refresh = function(){
 	if (this.contents){
 		this.contents.clear();
 		this.buildComList();
@@ -2194,7 +1937,7 @@ Window_CraftBlueprintList.prototype.refresh = function(){
 	}
 }
 
-Window_CraftBlueprintList.prototype.getCraftList = function() {
+Window_MagicCraftBlueprintList.prototype.getCraftList = function() {
 	let skillList = [];
 	for (let i1 = 0; i1 < this._comList.length; i1++){
 		for (let i2 = 0; i2 < this._comList[i1].length; i2++){
@@ -2208,15 +1951,17 @@ Window_CraftBlueprintList.prototype.getCraftList = function() {
 }
 
 
-/* Window_CraftInfo */
-Window_CraftInfo.prototype = Object.create(Window_Selectable.prototype);
-Window_CraftInfo.prototype.constructor = Window_CraftInfo;
+/* Window_MagicCraftInfo */
+Window_MagicCraftInfo.prototype = Object.create(Window_Selectable.prototype);
+Window_MagicCraftInfo.prototype.constructor = Window_MagicCraftInfo;
 
-Window_CraftInfo.prototype.initialize = function(x, y, w, h){
+Window_MagicCraftInfo.prototype.initialize = function(x, y, w, h){
 	this._width = w;
 	this._height = h;
 	this._x = x;
 	this._y = y;
+	Window_Selectable.prototype.initialize.call(this, x, y, w, h);
+
 	this._windowMode = 0;
 	this._selectedComponents = {};
 	this._selectedCatalysts = {};
@@ -2224,46 +1969,47 @@ Window_CraftInfo.prototype.initialize = function(x, y, w, h){
 	this._curCatalyst = 0;
 	this._curBaseSpellId = 0;
 	this._countdown = 0;
-  	this._arrowBlinkTimer = 0;
-  	this._lineHeight = this.lineHeight();
-
-	Window_Selectable.prototype.initialize.call(this, x, y, w, h);
+	this._arrowBlinkTimer = 0;
+	this._lineHeight = this.lineHeight();
 }
 
-Window_CraftInfo.prototype.getHeight = function() { return this._height; }
-Window_CraftInfo.prototype.getWidth = function() { return this._width; }
+//Getters
+Window_MagicCraftInfo.prototype.getHeight = function() { return this._height; }
+Window_MagicCraftInfo.prototype.getWidth = function() { return this._width; }
 
-Window_CraftInfo.prototype.setMode = function(newMode) {
+//Setters
+Window_MagicCraftInfo.prototype.setMode = function(newMode) {
 	this._windowMode = newMode;
 	this.refresh();
 }
 
-Window_CraftInfo.prototype.updateSelectedComponents = function(selCmps) {
+Window_MagicCraftInfo.prototype.updateSelectedComponents = function(selCmps) {
 	this._selectedComponents = selCmps;
 	this.refresh();
 }
 
-Window_CraftInfo.prototype.updateSelectedCatalysts = function(selCats) {
+Window_MagicCraftInfo.prototype.updateSelectedCatalysts = function(selCats) {
 	this._selectedCatalysts = selCats;
 	this.refresh();
 }
 
-Window_CraftInfo.prototype.setSelectedComponent = function(selCmp) {
+Window_MagicCraftInfo.prototype.setSelectedComponent = function(selCmp) {
 	this._curComponent = selCmp;
 	this.refresh();
 }
 
-Window_CraftInfo.prototype.setSelectedCatalyst = function(selCat) {
+Window_MagicCraftInfo.prototype.setSelectedCatalyst = function(selCat) {
 	this._curCatalyst = selCat;
 	this.refresh();
 }
 
-Window_CraftInfo.prototype.setSelectedBaseSpell = function(selBase){
+Window_MagicCraftInfo.prototype.setSelectedBaseSpell = function(selBase){
 	this._curBaseSpellId = selBase;
 	this.refresh();
 }
 
-Window_CraftInfo.prototype.paletteInfo = function(){
+//Doers
+Window_MagicCraftInfo.prototype.paletteInfo = function(){
 	let fmt = undefined;
 	let bEnableWordwrap = true;
 	let text = undefined;
@@ -2274,196 +2020,181 @@ Window_CraftInfo.prototype.paletteInfo = function(){
 	let catString = "";
 
 	fmt = JSON.parse(paletteTxFmt || '');
-	if (fmt){
+	if (fmt) {
 		bEnableWordwrap = fmt.match(/<(?:WordWrap)>/i);
-		if (Object.keys(this._selectedComponents).length > 0 ||
-				Object.keys(this._selectedCatalysts).length > 0){
-			if (Object.keys(this._selectedComponents).length > 0) {
+		if (Object.keys(this._selectedComponents).length > 0) {
+			let componentIds = Object.values(this._selectedComponents);
 
-				let cmpIds = Object.values(this._selectedComponents);
-				let cmpData = $dataSkills.filter(sk=> (cmpIds.includes(0) && !sk) || (sk && cmpIds.includes(sk.id)));
+			for (let componentId of componentIds) {
+				if (componentId > 0) {
+					let componentSkillData = $dataSkills.filter(skl => skl && skl.id == componentId);
+					let componentSkillPluginData = LMPGamesCore.pluginData.magicCrafting.skillData
+						.find(skl => skl && skl.Id == componentId);
+					
+					if (componentSkillData && componentSkillPluginData) {
+						let halfWndW = this._width / 2;
+						this.contents.fontSize = 26;
 
-				for (let i1 = 0; i1 < cmpIds.length; i1++){
-					if (cmpIds[i1] != 0){
-						let curCmp = cmpData.find(sk => sk && sk.id == cmpIds[i1]);
-						if (curCmp){
-							let halfWndW = this._width / 2;
-							this.contents.fontSize = 26;
+						let cmpTitle = "Component " + String(i1+1);
+						let titleLen = this.contents.measureTextWidth(cmpTitle);
+						let titlePos = Math.floor(halfWndW - (titleLen/1.5));
 
-							let cmpTitle = "Component " + String(i1+1);
-							let titleLen = this.contents.measureTextWidth(cmpTitle);
-							let titlePos = Math.floor(halfWndW - (titleLen/1.5));
+						titlePos = Math.floor((cmpTitle.length < 10 ? titlePos - (10 + (cmpTitle.length/2)) : titlePos + (cmpTitle.length/2)));
+						cmpTitle = addXShift(cmpTitle, titlePos);
+						cmpTitle = changeFontSize(cmpTitle, 26);
+						cmpTitle = addBreak(cmpTitle, 'end');
 
-							titlePos = Math.floor((cmpTitle.length < 10 ? titlePos - (10 + (cmpTitle.length/2)) : titlePos + (cmpTitle.length/2)));
-							cmpTitle = addXShift(cmpTitle, titlePos);
-							cmpTitle = changeFontSize(cmpTitle, 26);
-							cmpTitle = addBreak(cmpTitle, 'end');
+						let cmpName = componentSkillData.name;
+						let nameLen = this.contents.measureTextWidth(cmpName);
+						let namePos = Math.floor(halfWndW - (nameLen/1.5));
 
-							let cmpName = curCmp.name;
-							let nameLen = this.contents.measureTextWidth(cmpName);
-							let namePos = Math.floor(halfWndW - (nameLen/1.5));
+						namePos = Math.floor((cmpName.length < 10 ? namePos - (10 + (cmpName.length/2)) : namePos + (cmpName.length/2)));
+						cmpName = addXShift(cmpName, namePos);
+						cmpName = changeFontSize(cmpName, 26);
+						cmpName = addBreak(cmpName, 'end');
+						cmpName = addBreak(cmpName, 'end');
 
-							namePos = Math.floor((cmpName.length < 10 ? namePos - (10 + (cmpName.length/2)) : namePos + (cmpName.length/2)));
-							cmpName = addXShift(cmpName, namePos);
-							cmpName = changeFontSize(cmpName, 26);
-							cmpName = addBreak(cmpName, 'end');
-							cmpName = addBreak(cmpName, 'end');
+						let elementIcon = staticIconLst["11"][componentSkillData.damage.elementId];
+						let element = $dataSystem.elements[componentSkillData.damage.elementId] || "Non-Elemental";
+						let damage = 0;
 
-							let elementIcon = staticIconLst["11"][curCmp.damage.elementId];
-							let element = $dataSystem.elements[curCmp.damage.elementId] || "Non-Elemental";
-							let damage = 0;
+						let baseDamage = componentSkillPluginData.BaseDamage;
+						damage = Math.ceil((parseInt(baseDamage) * mgDmgRate));
 
-							let form = curCmp.damage.formula;
-							let formBaseDmg = form.split(" ")[0];
-							damage = Math.ceil((parseInt(formBaseDmg) * mgDmgRate));
+						let elementStr = "Element: " + elementIcon + ' ' + element;
+						elementStr = addBreak(elementStr, 'end');
+						let dmgStr = "Damage Added: " + damage;
+						dmgStr = addBreak(dmgStr, 'end');
+						dmgStr = addBreak(dmgStr, 'end');
+						dmgStr = addBreak(dmgStr, 'end');
 
-							let elementStr = "Element: " + elementIcon + ' ' + element;
-							elementStr = addBreak(elementStr, 'end');
-							let dmgStr = "Damage Added: " + damage;
-							dmgStr = addBreak(dmgStr, 'end');
-							dmgStr = addBreak(dmgStr, 'end');
-							dmgStr = addBreak(dmgStr, 'end');
-
-							cmpString += cmpTitle + cmpName + elementStr + dmgStr;
-						}
+						cmpString += cmpTitle + cmpName + elementStr + dmgStr;
 					}
 				}
 			}
+		}
 
-			if (Object.keys(this._selectedCatalysts).length > 0){
-				bEnableWordwrap = fmt.match(/<(?:WordWrap)>/i);
-				let catIds = Object.values(this._selectedCatalysts);
-				let catData = $dataItems.filter(itm=> (catIds.includes(0) && !itm) || (itm && catIds.includes(itm.id)));
+		if (Object.keys(this._selectedCatalysts).length > 0) {
+			bEnableWordwrap = fmt.match(/<(?:WordWrap)>/i);
+			let catalystIds = Object.values(this._selectedCatalysts);
+			for (let catalystId of catalystIds) {
+				if (catalystId > 0) {
+					let catalystItemData = $dataItems.find(itm => itm && itm.id == catalystId);
+					let catalystItemPluginData = LMPGamesCore.pluginData.magicCrafting.itemData
+						.find(itm => itm && itm.Id == catalystId);
 
-				for (let i1 = 0; i1 < catIds.length; i1++){
-					if (catIds[i1] != undefined){
-						let curCat = catData.find(itm => itm && itm.id == catIds[i1]);
-						if (curCat){
-							let halfWndW = this._width / 2;
-							this.contents.fontSize = 26;
+					if (catalystItemData && catalystItemPluginData) {
+						let halfWndW = this._width / 2;
+						this.contents.fontSize = 26;
 
-							let catTitle = "Catalyst " + String(i1+1);
-							let titleLen = this.contents.measureTextWidth(catTitle);
-							let titlePos = Math.floor(halfWndW - (titleLen/1.5));
+						let catTitle = "Catalyst " + String(i1+1);
+						let titleLen = this.contents.measureTextWidth(catTitle);
+						let titlePos = Math.floor(halfWndW - (titleLen/1.5));
 
-							titlePos = Math.floor((catTitle.length < 10 ? titlePos - (10 + (catTitle.length/2)) : titlePos + (catTitle.length/2)));
-							catTitle = addXShift(catTitle, titlePos);
-							catTitle = changeFontSize(catTitle, 26);
-							catTitle = addBreak(catTitle, 'end');
+						titlePos = Math.floor((catTitle.length < 10 ? titlePos - (10 + (catTitle.length/2)) : titlePos + (catTitle.length/2)));
+						catTitle = addXShift(catTitle, titlePos);
+						catTitle = changeFontSize(catTitle, 26);
+						catTitle = addBreak(catTitle, 'end');
 
-							let catName = curCat.name;
-							let nameLen = this.contents.measureTextWidth(catName);
-							let namePos = Math.floor(halfWndW - (nameLen/1.5));
-							let header = "";
+						let catName = curCat.name;
+						let nameLen = this.contents.measureTextWidth(catName);
+						let namePos = Math.floor(halfWndW - (nameLen/1.5));
+						let header = "";
 
-							namePos = Math.floor((catName.length < 10 ? namePos - (10 + (catName.length/2)) : namePos + (catName.length/2)));
-							catName = addXShift(catName, namePos);
-							catName = changeFontSize(catName, 26);
-							catName = addBreak(catName, 'end');
-							catName = addBreak(catName, 'end');
+						namePos = Math.floor((catName.length < 10 ? namePos - (10 + (catName.length/2)) : namePos + (catName.length/2)));
+						catName = addXShift(catName, namePos);
+						catName = changeFontSize(catName, 26);
+						catName = addBreak(catName, 'end');
+						catName = addBreak(catName, 'end');
 
-							let effectString = this.generateCatEffectList(curCat);
-							effectString = addBreak(effectString, 'end');
+						let effectString = this.generateCatEffectList(curCat);
+						effectString = addBreak(effectString, 'end');
 
-							catString += catTitle + catName + effectString;
-						}
+						catString += catTitle + catName + effectString;
 					}
 				}
 			}
+		}
 
-			totalText = totalText.concat(cmpString, catString);
-			text = fmt.format(cmpString, catString);
+		totalText = totalText.concat(cmpString, catString);
+		text = fmt.format(cmpString, catString);
 
-			if (totalText.length > 0){
-				textState = { index: 0 };
-				textState.originalText = text;
-				textState.text = this.convertEscapeCharacters(text);
-				let convertedTextHeight = this.calcTextHeight(textState, true);
-				this._allTextHeight = (convertedTextHeight > 600 ? convertedTextHeight / 2 : convertedTextHeight);
-
-				if (bEnableWordwrap) {
-					var txtLen = (this._allTextHeight == 0 ? 300 : this._allTextHeight);
-					var multi2 =  8;
-					let multi3 = (txtLen >= 600 ? 4 : 10);
-					var multi = Math.ceil((txtLen * multi2) / (Graphics.width - (this._width + multi3)));
-
-					this._allTextHeight *= multi/2;
-					this._allTextHeight = Math.pow(2, Math.round(Math.log(this._allTextHeight) / Math.log(2)));
-				} else {
-					this._allTextHeight = 2;
-				}
-
-				this.createContents();
-				this.drawTextEx(text, 0, 0);
-			}
+		if (totalText.length > 0){
+			textState = { index: 0 };
+			textState.originalText = text;
+			textState.text = this.convertEscapeCharacters(text);
+			let convertedTextHeight = this.calcTextHeight(textState, true);
+			this._allTextHeight = (convertedTextHeight > 600 ? convertedTextHeight / 2 : convertedTextHeight);
+			this._allTextHeight = LMPGamesCore.functions.getCalculatedTextHeight(true, this._allTextHeight, this._width, text, false);
+			this.createContents();
+			this.drawTextEx(text, 0, 0);
 		}
 	}
 }
 
-Window_CraftInfo.prototype.componentInfo = function(){
+Window_MagicCraftInfo.prototype.componentInfo = function(){
 	let fmt = undefined;
 	let bEnableWordwrap = true;
 	let text = undefined;
-	let finalText = undefined;
 	let textState = undefined;
 	let totalText = "";
+	let name = "";
+	let elementStr = "";
+	let dmgStr = "";
 
 	fmt = JSON.parse(cmpTxFmt || '');
-	if (fmt && this._curComponent > 0){
+	if (fmt && this._curComponent > 0) {
 		bEnableWordwrap = fmt.match(/<(?:WordWrap)>/i);
-		let curCmp = $dataSkills.find(sk => sk && sk.id == this._curComponent);
-		let name = curCmp.name + "<br>";
-		let element = $dataSystem.elements[curCmp.damage.elementId] || "Non-Elemental";
-		let damage = 0;
+		let componentSpellData = $dataSkills.find(sk => sk && sk.id == this._curComponent);
+		let componentSpellPluginData = LMPGamesCore.pluginData.magicCrafting.skillData
+			.find(skl => skl && skl.Id == this._curComponent);
+		
+		if (componentSpellData && componentSpellPluginData) {
+			let element = $dataSystem.elements[componentSpellData.damage.elementId] || "Non-Elemental";
+			let damage = 0;
+			name = componentSpellData.name + "<br>";
 
-		let form = curCmp.damage.formula;
-		let formBaseDmg = form.split(" ")[0];
-		damage = Math.ceil((parseInt(formBaseDmg) * mgDmgRate));
+			let baseDmg = componentSpellPluginData.BaseDamage;
+			damage = Math.ceil((parseInt(baseDmg) * mgDmgRate));
 
-		let elementStr = "Element: " + element + "<br>";
-		let dmgStr = "Damage Added: " + damage + "<br><br><br>";
+			elementStr = "Element: " + element + "<br>";
+			dmgStr = "Damage Added: " + damage + "<br><br><br>";
+		}
 
 		totalText = totalText.concat(name, elementStr, dmgStr);
 		text = fmt.format(name, elementStr, dmgStr);
-
 		textState = { index: 0 };
 		textState.originalText = text;
 		textState.text = this.convertEscapeCharacters(text);
 		let convertedTextHeight = this.calcTextHeight(textState, true);
 		this._allTextHeight = (convertedTextHeight > 600 ? convertedTextHeight / 2 : convertedTextHeight);
-
-		if (bEnableWordwrap) {
-			var txtLen = (this._allTextHeight == 0 ? 300 : this._allTextHeight);
-			var multi2 =  8;
-			let multi3 = (txtLen >= 600 ? 4 : 10);
-			var multi = Math.ceil((txtLen * multi2) / (Graphics.width - (this._width + multi3)));
-
-			this._allTextHeight *= multi/2;
-			this._allTextHeight = Math.pow(2, Math.round(Math.log(this._allTextHeight) / Math.log(2)));
-		} else {
-			this._allTextHeight = 2;
-		}
-
+		this._allTextHeight = LMPGamesCore.functions.getCalculatedTextHeight(true, this._allTextHeight, this._width, text, false);
 		this.createContents();
 		this.drawTextEx(text, 0, 0);
 	}
 }
 
-Window_CraftInfo.prototype.catalystInfo = function(){
+Window_MagicCraftInfo.prototype.catalystInfo = function(){
 	let fmt = "";
 	let bEnableWordwrap = true;
 	let text = "";
-	let finalText = "";
 	let textState = "";
 	let totalText = "";
+	let name = "";
+	let effectString = "";
 
 	fmt = JSON.parse(catTxFmt || '');
 	if (fmt && this._curCatalyst > 0){
 		bEnableWordwrap = fmt.match(/<(?:WordWrap)>/i);
-		let curCat = $dataItems.find(itm=> itm && itm.id == this._curCatalyst);
-		let name = curCat.name + "<br>";
-		let effectString = "<br>" + this.generateCatEffectList(curCat);
-		if (effectString.length <= 13) { effectString = ""; }
+		let catalystItemData = $dataItems.find(itm=> itm && itm.id == this._curCatalyst);
+		let catalystItemPluginData = LMPGamesCore.pluginData.magicCrafting.itemData
+			.find(itm => itm && itm.Id == this._curCatalyst); 
+
+		if (catalystItemData && catalystItemPluginData) {
+			name = curCat.name + "<br>";
+			effectString = "<br>" + this.generateCatEffectList(curCat);
+			if (effectString.length <= 13) { effectString = ""; }
+		}
 
 		totalText = totalText.concat(name, effectString, '');
 		text = fmt.format(name, effectString, '');
@@ -2473,29 +2204,16 @@ Window_CraftInfo.prototype.catalystInfo = function(){
 		textState.text = this.convertEscapeCharacters(text);
 		let convertedTextHeight = this.calcTextHeight(textState, true);
 		this._allTextHeight = (convertedTextHeight > 600 ? convertedTextHeight / 2 : convertedTextHeight);
-
-		if (bEnableWordwrap) {
-			var txtLen = (this._allTextHeight == 0 ? 300 : this._allTextHeight);
-			var multi2 =  8;
-			let multi3 = (txtLen >= 600 ? 4 : 10);
-			var multi = Math.ceil((txtLen * multi2) / (Graphics.width - (this._width + multi3)));
-
-			this._allTextHeight *= multi/2;
-			this._allTextHeight = Math.pow(2, Math.round(Math.log(this._allTextHeight) / Math.log(2)));
-		} else {
-			this._allTextHeight = 2;
-		}
-
+		this._allTextHeight = LMPGamesCore.functions.getCalculatedTextHeight(true, this._allTextHeight, this._width, text, false);
 		this.createContents();
 		this.drawTextEx(text, 0, 0);
 	}
 }
 
-Window_CraftInfo.prototype.baseSpellInfo = function(){
+Window_MagicCraftInfo.prototype.baseSpellInfo = function(){
 	let fmt = undefined;
 	let bEnableWordwrap = true;
 	let text = undefined;
-	let finalText = undefined;
 	let textState = undefined;
 	let totalText = "";
 
@@ -2508,16 +2226,6 @@ Window_CraftInfo.prototype.baseSpellInfo = function(){
 		let effSkInfo = "";
 		let name = "";
 		let desc = "";
-		let effStates = undefined;
-		let effBuffs = undefined;
-		let effRmvBuffs = undefined;
-		let effRmvDebuffs = undefined;
-		let effGrowth = undefined;
-		let effSpecEff = undefined;
-		let effComEvts = undefined;
-		let effHPRecov = undefined;
-		let effMPRecov = undefined;
-		let effTPRecov = undefined;
 
 		bEnableWordwrap = fmt.match(/<(?:WordWrap)>/i);
 
@@ -2683,41 +2391,24 @@ Window_CraftInfo.prototype.baseSpellInfo = function(){
 			effSkInfo = LMPGamesCore.functions.generateEffectStr(processedEffects, currSkill.Obfuscated);
 		}
 
-
 		totalText = totalText.concat(name, desc, miscSkInfo, invSkInfo, dmgSkInfo, effSkInfo, "", "");
 		text = fmt.format(name, desc, miscSkInfo, invSkInfo, dmgSkInfo, effSkInfo, "", "");
-
 		textState = { index: 0 };
 		textState.originalText = text;
 		textState.text = this.convertEscapeCharacters(text);
 		let convertedTextHeight = this.calcTextHeight(textState, true);
 		this._allTextHeight = (convertedTextHeight > 600 ? convertedTextHeight / 2 : convertedTextHeight);
-
-		if (bEnableWordwrap) {
-			var txtLen = (this._allTextHeight == 0 ? 300 : this._allTextHeight);
-			var multi2 =  6;
-			let multi3 = (txtLen >= 600 ? 4 : 10);
-			var multi = Math.ceil((txtLen * multi2) / (Graphics.width - (this._width + multi3)));
-
-			this._allTextHeight += this._allTextHeight * 0.25;
-			let numOfBreaks = text.match(/<br>/g).length;
-			this._allTextHeight += numOfBreaks * 15;
-		} else {
-			this._allTextHeight = 2;
-		}
-
-
+		this._allTextHeight = LMPGamesCore.functions.getCalculatedTextHeight(true, this._allTextHeight, this._width, text, false);
 		this.createContents();
 		this.drawTextEx(text, 0, 0);
 	}
 
 }
 
-Window_CraftInfo.prototype.finalSpellInfo = function(){
+Window_MagicCraftInfo.prototype.finalSpellInfo = function(){
 	let fmt = undefined;
 	let bEnableWordwrap = true;
 	let text = undefined;
-	let finalText = undefined;
 	let textState = undefined;
 	let totalText = "";
 
@@ -2731,16 +2422,6 @@ Window_CraftInfo.prototype.finalSpellInfo = function(){
 		let invSkInfo = "";
 		let dmgSkInfo = "";
 		let effSkInfo = "";
-		let effStates = undefined;
-		let effBuffs = undefined;
-		let effRmvBuffs = undefined;
-		let effRmvDebuffs = undefined;
-		let effGrowth = undefined;
-		let effSpecEff = undefined;
-		let effComEvts = undefined;
-		let effHPRecov = undefined;
-		let effMPRecov = undefined;
-		let effTPRecov = undefined;
 
 		bEnableWordwrap = fmt.match(/<(?:WordWrap)>/i);
 
@@ -2858,7 +2539,6 @@ Window_CraftInfo.prototype.finalSpellInfo = function(){
 		evasionInfo = addBreak(evasionInfo, 'end');
 		invSkInfo += evasionInfo;
 
-
 		//Damage Section Info
 		if (currSkill.damage.type != 0){
 			dmgSkInfo = "Damage Information:";
@@ -2908,26 +2588,13 @@ Window_CraftInfo.prototype.finalSpellInfo = function(){
 		textState.text = this.convertEscapeCharacters(text);
 		let convertedTextHeight = this.calcTextHeight(textState, true);
 		this._allTextHeight = (convertedTextHeight > 600 ? convertedTextHeight / 2 : convertedTextHeight);
-
-		if (bEnableWordwrap) {
-			var txtLen = (this._allTextHeight == 0 ? 300 : this._allTextHeight);
-			var multi2 =  6;
-			let multi3 = (txtLen >= 600 ? 4 : 10);
-			var multi = Math.ceil((txtLen * multi2) / (Graphics.width - (this._width + multi3)));
-
-			this._allTextHeight += this._allTextHeight * 0.25;
-			let numOfBreaks = text.match(/<br>/g).length;
-			this._allTextHeight += numOfBreaks * 15;
-		} else {
-			this._allTextHeight = 2;
-		}
-
+		this._allTextHeight = LMPGamesCore.functions.getCalculatedTextHeight(true, this._allTextHeight, this._width, text, false);
 		this.createContents();
 		this.drawTextEx(text, 0, 0);
 	}
 }
 
-Window_CraftInfo.prototype.generateEffectStr = function(effects, obfuscated){
+Window_MagicCraftInfo.prototype.generateEffectStr = function(effects, obfuscated){
 	let effectStr = "Effects:";
 	if (craftingDisplayMode == 1){
 		effectStr = obfuscateData(effectStr);
@@ -3018,7 +2685,7 @@ Window_CraftInfo.prototype.generateEffectStr = function(effects, obfuscated){
 	return effectStr;
 }
 
-Window_CraftInfo.prototype.buildDataList = function(dataTitle, data, titleXShift, dataXShift, dataYShift, obfuscated){
+Window_MagicCraftInfo.prototype.buildDataList = function(dataTitle, data, titleXShift, dataXShift, dataYShift, obfuscated){
 	let builtStr = "";
 
 	if (dataTitle.length > 0){
@@ -3058,7 +2725,7 @@ Window_CraftInfo.prototype.buildDataList = function(dataTitle, data, titleXShift
 	return builtStr;
 }
 
-Window_CraftInfo.prototype.refresh = function() {
+Window_MagicCraftInfo.prototype.refresh = function() {
 	if (this._countdown > 0) { return; }
 	this.contents.clear();
 	this._lastOriginY = -200;
@@ -3078,7 +2745,7 @@ Window_CraftInfo.prototype.refresh = function() {
 	}
 };
 
-Window_CraftInfo.prototype.generateCatEffectList = function(catData){
+Window_MagicCraftInfo.prototype.generateCatEffectList = function(catData){
 	let craftEffects = catData.CraftingEffects;
 	let effectString = "Effects:";
 	effectString = addXShift(effectString, 5);
@@ -3119,133 +2786,137 @@ Window_CraftInfo.prototype.generateCatEffectList = function(catData){
 	return effectString;
 }
 
-Window_CraftInfo.prototype.contentsHeight = function() {
-  var standard = this.height - this.standardPadding() * 2;
-  return Math.max(standard, this._allTextHeight);
+Window_MagicCraftInfo.prototype.contentsHeight = function() {
+var standard = this.height - this.standardPadding() * 2;
+return Math.max(standard, this._allTextHeight);
 };
 
-Window_CraftInfo.prototype.updateCountdown = function() {
-  if (this._countdown > 0) {
-    this._countdown -= 1;
-    if (this._countdown <= 0) this.refresh();
-  }
+Window_MagicCraftInfo.prototype.updateCountdown = function() {
+if (this._countdown > 0) {
+	this._countdown -= 1;
+	if (this._countdown <= 0) this.refresh();
+}
 };
 
-Window_CraftInfo.prototype.scrollSpeed = function() {
-  if (this._scrollSpeed === undefined) {
-    this._scrollSpeed = 5;
-  }
-  return this._scrollSpeed;
+Window_MagicCraftInfo.prototype.scrollSpeed = function() {
+if (this._scrollSpeed === undefined) {
+	this._scrollSpeed = 5;
+}
+return this._scrollSpeed;
 };
 
-Window_CraftInfo.prototype.scrollOriginDown = function(speed) {
-  var value = this.contentsHeight() - this.height +
-    this.standardPadding() * 2;
-  this.origin.y = Math.min(value, this.origin.y + speed);
+Window_MagicCraftInfo.prototype.scrollOriginDown = function(speed) {
+var value = this.contentsHeight() - this.height +
+	this.standardPadding() * 2;
+this.origin.y = Math.min(value, this.origin.y + speed);
 };
 
-Window_CraftInfo.prototype.scrollOriginUp = function(speed) {
-  this.origin.y = Math.max(0, this.origin.y - speed);
+Window_MagicCraftInfo.prototype.scrollOriginUp = function(speed) {
+this.origin.y = Math.max(0, this.origin.y - speed);
 };
 
-Window_CraftInfo.prototype.update = function() {
-  Window_Selectable.prototype.update.call(this);
-  this.updateCountdown();
-  if (this.isOpenAndActive()) this.updateKeyScrolling();
+Window_MagicCraftInfo.prototype.update = function() {
+Window_Selectable.prototype.update.call(this);
+this.updateCountdown();
+if (this.isOpenAndActive()) this.updateKeyScrolling();
 };
 
-Window_CraftInfo.prototype.updateKeyScrolling = function() {
-  if (Input.isPressed('up')) {
-    this.scrollOriginUp(this.scrollSpeed());
-  } else if (Input.isPressed('down')) {
-    this.scrollOriginDown(this.scrollSpeed());
-  } else if (Input.isPressed('pageup')) {
-    this.scrollOriginUp(this.scrollSpeed() * 4);
-  } else if (Input.isPressed('pagedown')) {
-    this.scrollOriginDown(this.scrollSpeed() * 4);
-  }
+Window_MagicCraftInfo.prototype.updateKeyScrolling = function() {
+if (Input.isPressed('up')) {
+	this.scrollOriginUp(this.scrollSpeed());
+} else if (Input.isPressed('down')) {
+	this.scrollOriginDown(this.scrollSpeed());
+} else if (Input.isPressed('pageup')) {
+	this.scrollOriginUp(this.scrollSpeed() * 4);
+} else if (Input.isPressed('pagedown')) {
+	this.scrollOriginDown(this.scrollSpeed() * 4);
+}
 };
 
-Window_CraftInfo.prototype.updateArrows = function() {
-  if (this._lastOriginY === this.origin.y) return;
-  this.showArrows();
+Window_MagicCraftInfo.prototype.updateArrows = function() {
+if (this._lastOriginY === this.origin.y) return;
+this.showArrows();
 };
 
-Window_CraftInfo.prototype.showArrows = function() {
-  this._lastOriginY = this.origin.y;
-  this.upArrowVisible = this.origin.y !== 0;
-  this.downArrowVisible = this.origin.y !== this.contentsHeight() -
-    this.height + this.standardPadding() * 2;
+Window_MagicCraftInfo.prototype.showArrows = function() {
+this._lastOriginY = this.origin.y;
+this.upArrowVisible = this.origin.y !== 0;
+this.downArrowVisible = this.origin.y !== this.contentsHeight() -
+	this.height + this.standardPadding() * 2;
 };
 
-Window_CraftInfo.prototype.hideArrows = function() {
-  this.upArrowVisible = false;
-  this.downArrowVisible = false;
+Window_MagicCraftInfo.prototype.hideArrows = function() {
+this.upArrowVisible = false;
+this.downArrowVisible = false;
 };
 
-Window_CraftInfo.prototype.isInsideFrame = function() {
-  var x = this.canvasToLocalX(TouchInput._mouseOverX);
-  var y = this.canvasToLocalY(TouchInput._mouseOverY);
-  return x >= 0 && y >= 0 && x < this._width && y < this._height;
+Window_MagicCraftInfo.prototype.isInsideFrame = function() {
+var x = this.canvasToLocalX(TouchInput._mouseOverX);
+var y = this.canvasToLocalY(TouchInput._mouseOverY);
+return x >= 0 && y >= 0 && x < this._width && y < this._height;
 };
 
-Window_CraftInfo.prototype.processWheel = function() {
-  if (!this.isInsideFrame()) { return; }
-  var threshold = 20;
-  if (TouchInput.wheelY >= threshold) {
-    this.scrollOriginDown(this.scrollSpeed() * 4);
-  }
+Window_MagicCraftInfo.prototype.processWheel = function() {
+if (!this.isInsideFrame()) { return; }
+var threshold = 20;
+if (TouchInput.wheelY >= threshold) {
+	this.scrollOriginDown(this.scrollSpeed() * 4);
+}
 
-  if (TouchInput.wheelY <= -threshold) {
-    this.scrollOriginUp(this.scrollSpeed() * 4);
-  }
+if (TouchInput.wheelY <= -threshold) {
+	this.scrollOriginUp(this.scrollSpeed() * 4);
+}
 };
 
 
-/* Window_CraftCost Functions */
-Window_CraftCost.protoytpe = Object.create(Window_Selectable.protoype);
-Window_CraftCost.prototype.constructor = Window_CraftCost;
-Window_CraftCost.prototype.initialize = function(x, y, width, height){
+/* Window_MagicCraftCost Functions */
+Window_MagicCraftCost.prototype = Object.create(Window_Selectable.prototype);
+Window_MagicCraftCost.prototype.constructor = Window_MagicCraftCost;
+Window_MagicCraftCost.prototype.initialize = function(x, y, width, height){
 	this._width = width;
 	this._height = height;
 	this._xPos = x;
 	this._yPos = y;
+	Window_Selectable.prototype.initialize.call(this, x, y, width, height);
+
 	this._selectedComponents = {};
 	this._selectedCatalysts = {};
 	this._allTextHeight = 0;
 	this._goldCost = 0;
 	this._itemCost = 0;
 	this._costItemId = 0;
-
-	Window_Selectable.prototype.initialize.call(this, x, y, width, height);
 }
 
-Window_CraftCost.prototype.getWidth = function() { return this._width; }
-Window_CraftCost.prototype.getHeight = function() { return this._height; }
-Window_CraftCost.prototype.getGoldCost = function() { return this._goldCost; }
-Window_CraftCost.prototype.getItemCost = function() { return this._itemCost; }
-Window_CraftCost.prototype.getCostItemId = function() { return this._costItemId; }
-Window_CraftCost.prototype.updateComponents = function(selectedComponents){
+//Getters
+Window_MagicCraftCost.prototype.getWidth = function() { return this._width; }
+Window_MagicCraftCost.prototype.getHeight = function() { return this._height; }
+Window_MagicCraftCost.prototype.getGoldCost = function() { return this._goldCost; }
+Window_MagicCraftCost.prototype.getItemCost = function() { return this._itemCost; }
+Window_MagicCraftCost.prototype.getCostItemId = function() { return this._costItemId; }
+
+//Setters
+Window_MagicCraftCost.prototype.updateComponents = function(selectedComponents){
 	this._selectedComponents = selectedComponents;
 	this.refresh();
 }
 
-Window_CraftCost.prototoype.updateCatalysts = function(selectedCatalysts){
+Window_MagicCraftCost.prototype.updateCatalysts = function(selectedCatalysts){
 	this._selectedCatalysts = selectedCatalysts;
 	this.refresh();
 }
 
-Window_CraftCost.prototype.setSelectedSpellId = function(skId){
+Window_MagicCraftCost.prototype.setSelectedSpellId = function(skId){
 	this._selectedBaseSpellId = skId;
 	this.refresh();
 }
 
-Window_CraftCost.prototype.refresh = function(){
+//Doers
+Window_MagicCraftCost.prototype.refresh = function(){
 	this.contents.clear();
 	this.drawCostInfo();
 }
 
-Window_CraftCost.prototype.drawCostInfo = function(){
+Window_MagicCraftCost.prototype.drawCostInfo = function(){
 	let skLvl = 1;
 	let numComp = 1;
 	let numCat =  1;
@@ -3253,14 +2924,14 @@ Window_CraftCost.prototype.drawCostInfo = function(){
 	let baseFactor = 1.0;
 	let finalBaseCost = 0;
 	let finalBaseFactor = 0.0;
-	let pluginData = LMPGamesCore.pluginData.magicCrafting;
-
 	for (let key of Object.keys(this._selectedComponents)) {
 		if (this._selectedComponents[key] != 0) {
 			numComp++;
 		}
 
-		let skillPluginData = pluginData.skillData.find(sk => sk && sk.id == this._selectedComponents[key]);
+		let skillPluginData = LMPGamesCore.pluginData.magicCrafting.skillData
+			.find(sk => sk && sk.id == this._selectedComponents[key]);
+
 		if (skillPluginData) {
 			if (skillPluginData.hasOwnProperty('CurrencyBaseCost')) {
 				finalBaseCost += parseInt(skillPluginData.CurrencyBaseCost);
@@ -3277,7 +2948,9 @@ Window_CraftCost.prototype.drawCostInfo = function(){
 			numCat++;
 		}
 
-		let itemPluginData = pluginData.itemData.find(sk => sk && sk.id == this._selectedCatalysts[key]);
+		let itemPluginData = LMPGamesCore.pluginData.magicCrafting.itemData
+			.find(sk => sk && sk.id == this._selectedCatalysts[key]);
+
 		if (itemPluginData) {
 			if (itemPluginData.hasOwnProperty('CurrencyBaseCost')) {
 				finalBaseCost += parseInt(itemPluginData.CurrencyBaseCost);
@@ -3290,19 +2963,20 @@ Window_CraftCost.prototype.drawCostInfo = function(){
 	}
 
 	if (this._selectedBaseSpellId != undefined || this._selectedBaseSpellId != 0) {
-		let selectedSkill = $dataSkills.find(sk => sk && sk.id == this._selectedBaseSpellId);
-		if (selectedSkill) {
-			skLvl = selectedSkill.level;
+		let selectedBaseSkill = $dataSkills.find(sk => sk && sk.id == this._selectedBaseSpellId);
+		if (selectedBaseSkill) {
+			skLvl = selectedBaseSkill.level;
 		}
 
-		let skillPluginData = pluginData.skillData.find(sk => sk && sk.id == this._selectedBaseSpellId);
-		if (skillPluginData) {
-			if (skillPluginData.hasOwnProperty('CurrencyBaseCost')) {
-				finalBaseCost += parseInt(skillPluginData.CurrencyBaseCost);
+		let selectedBaseSkillPluginData = LMPGamesCore.pluginData.magicCrafting.skillData
+			.find(sk => sk && sk.id == this._selectedBaseSpellId);
+		if (selectedBaseSkillPluginData) {
+			if (selectedBaseSkillPluginData.hasOwnProperty('CurrencyBaseCost')) {
+				finalBaseCost += parseInt(selectedBaseSkillPluginData.CurrencyBaseCost);
 			}
 
-			if (skillPluginData.hasOwnProperty('CurrencyBaseFactor')) {
-				finalBaseFactor += parseFloat(skillPlugData.CurrencyBaseFactor);
+			if (selectedBaseSkillPluginData.hasOwnProperty('CurrencyBaseFactor')) {
+				finalBaseFactor += parseFloat(selectedBaseSkillPluginData.CurrencyBaseFactor);
 			}
 		}
 	}
@@ -3390,10 +3064,10 @@ Window_CraftCost.prototype.drawCostInfo = function(){
 }
 
 
-/* Window_CraftCommand Functions */
-Window_CraftCommand.prototype = Object.create(Window_HorzCommand.prototype);
-Window_CraftCommand.prototype.consutructor = Window_CraftCommand;
-Window_CraftCommand.prototype.initialize = function(x, y, w, h){
+/* Window_MagicCraftCommand Functions */
+Window_MagicCraftCommand.prototype = Object.create(Window_HorzCommand.prototype);
+Window_MagicCraftCommand.prototype.consutructor = Window_MagicCraftCommand;
+Window_MagicCraftCommand.prototype.initialize = function(x, y, w, h){
 	this._width = w;
 	this._height = h;
 	this._x = x;
@@ -3404,38 +3078,38 @@ Window_CraftCommand.prototype.initialize = function(x, y, w, h){
 	this.makeCommandList();
 }
 
-Window_CraftCommand.prototype.windowWidth = function() {
-    return this._width;
+Window_MagicCraftCommand.prototype.windowWidth = function() {
+	return this._width;
 };
 
-Window_CraftCommand.prototype.standardFontSize = function() {
-    return 28;
+Window_MagicCraftCommand.prototype.standardFontSize = function() {
+	return 28;
 };
 
-Window_CraftCommand.prototype.maxCols = function() {
-    return 2;
+Window_MagicCraftCommand.prototype.maxCols = function() {
+	return 2;
 };
 
-Window_CraftCommand.prototype.updateHelp = function(){
+Window_MagicCraftCommand.prototype.updateHelp = function(){
 	//this._helpWindow.clear();
 };
 
-Window_CraftCommand.prototype.makeCommandList = function(){
+Window_MagicCraftCommand.prototype.makeCommandList = function(){
 	this._list = [];
 
 	this.addCommand('Craft','craft');
 	this.addCommand('Cancel','notCraft');
 }
 
-Window_CraftCommand.prototype.select = function(index){
+Window_MagicCraftCommand.prototype.select = function(index){
 	this._index = index;
-    this._stayCount = 0;
-    this.ensureCursorVisible();
-    this.updateCursor();
-    this.callUpdateHelp();
+	this._stayCount = 0;
+	this.ensureCursorVisible();
+	this.updateCursor();
+	this.callUpdateHelp();
 }
 
-Window_CraftCommand.prototype.processOk = function(){
+Window_MagicCraftCommand.prototype.processOk = function(){
 	if (this._index > -1){
 		let selSym = this.findIdxSymbol(this._index);
 
@@ -3448,121 +3122,121 @@ Window_CraftCommand.prototype.processOk = function(){
 	}
 }
 
-Window_CraftCommand.prototype.findIdxSymbol = function(idx){ return (idx !== -1  && idx < this._list.length ? this._list[idx].symbol : 'cancel'); }
-Window_CraftCommand.prototype.getHeight = function() { return this._height; }
+Window_MagicCraftCommand.prototype.findIdxSymbol = function(idx){ return (idx !== -1  && idx < this._list.length ? this._list[idx].symbol : 'cancel'); }
+Window_MagicCraftCommand.prototype.getHeight = function() { return this._height; }
 
 
-/* Scene_MSSkillName Functions */
-Scene_MCSkillName.prototype = Object.create(Scene_Name.prototype);
-Scene_MCSkillName.prototype.constructor = Scene_MCSkillName;
+/* Scene_MagicCraftSkillName Functions */
+Scene_MagicCraftSkillName.prototype = Object.create(Scene_Name.prototype);
+Scene_MagicCraftSkillName.prototype.constructor = Scene_MagicCraftSkillName;
 
-Scene_MCSkillName.prototype.initialize = function() {
-    Scene_MenuBase.prototype.initialize.call(this);
+Scene_MagicCraftSkillName.prototype.initialize = function() {
+	Scene_MenuBase.prototype.initialize.call(this);
 		this._skill = $newSkillInstance;
 		this._maxLength = 0;
 };
 
-Scene_MCSkillName.prototype.create = function() {
-    Scene_MenuBase.prototype.create.call(this);
+Scene_MagicCraftSkillName.prototype.create = function() {
+	Scene_MenuBase.prototype.create.call(this);
 	this._maxLength = 15;
-    this.createEditWindow();
-    this.createInputWindow();
+	this.createEditWindow();
+	this.createInputWindow();
 };
 
-Scene_MCSkillName.prototype.start = function() {
-    Scene_MenuBase.prototype.start.call(this);
-    this._editWindow.refresh();
+Scene_MagicCraftSkillName.prototype.start = function() {
+	Scene_MenuBase.prototype.start.call(this);
+	this._editWindow.refresh();
 };
 
-Scene_MCSkillName.prototype.createEditWindow = function() {
-    this._editWindow = new Window_MCNameEdit(this._skill, this._maxLength);
-    this.addWindow(this._editWindow);
+Scene_MagicCraftSkillName.prototype.createEditWindow = function() {
+	this._editWindow = new Window_MagicCraftNameEdit(this._skill, this._maxLength);
+	this.addWindow(this._editWindow);
 };
 
-Scene_MCSkillName.prototype.createInputWindow = function() {
-    this._inputWindow = new Window_NameInput(this._editWindow);
-    this._inputWindow.setHandler('ok', this.onInputOk.bind(this));
-    this.addWindow(this._inputWindow);
+Scene_MagicCraftSkillName.prototype.createInputWindow = function() {
+	this._inputWindow = new Window_NameInput(this._editWindow);
+	this._inputWindow.setHandler('ok', this.onInputOk.bind(this));
+	this.addWindow(this._inputWindow);
 };
 
-Scene_MCSkillName.prototype.onInputOk = function() {
-    this._skill.name = this._editWindow.name();
+Scene_MagicCraftSkillName.prototype.onInputOk = function() {
+	this._skill.name = this._editWindow.name();
 	this._skill.IsRecipe = false;
 	$newSkillInstance = this._skill;
 	$dataSkills[$newSkillInstance.id] = $newSkillInstance;
-    this.popScene();
+	this.popScene();
 };
 
 
-/* Window_MCNameEdit Functions */
-Window_MCNameEdit.prototype = Object.create(Window_NameEdit.prototype);
-Window_MCNameEdit.prototype.constructor = Window_MCNameEdit;
+/* Window_MagicCraftNameEdit Functions */
+Window_MagicCraftNameEdit.prototype = Object.create(Window_NameEdit.prototype);
+Window_MagicCraftNameEdit.prototype.constructor = Window_MagicCraftNameEdit;
 
-Window_MCNameEdit.prototype.initialize = function(skill, maxLength) {
-    var width = this.windowWidth();
-    var height = this.windowHeight();
-    var x = (Graphics.boxWidth - width) / 2;
-    var y = (Graphics.boxHeight - (height + this.fittingHeight(9) + 8)) / 2;
-    Window_Base.prototype.initialize.call(this, x, y, width, height);
-    this._skill = skill;
-    this._name = skill.name.slice(0, this._maxLength);
-    this._index = this._name.length;
-    this._maxLength = maxLength;
-    this._defaultName = this._name;
-    this.deactivate();
-    this.refresh();
-    //ImageManager.reserveFace(actor.faceName());
+Window_MagicCraftNameEdit.prototype.initialize = function(skill, maxLength) {
+	this._width = this.windowWidth();
+	this._height = this.windowHeight();
+	this._x = (Graphics.boxWidth - width) / 2;
+	this._y = (Graphics.boxHeight - (height + this.fittingHeight(9) + 8)) / 2;
+	Window_Base.prototype.initialize.call(this, x, y, width, height);
+
+	this._skill = skill;
+	this._name = skill.name.slice(0, this._maxLength);
+	this._index = this._name.length;
+	this._maxLength = maxLength;
+	this._defaultName = this._name;
+	this.deactivate();
+	this.refresh();
+	//ImageManager.reserveFace(actor.faceName());
 };
 
-Window_MCNameEdit.prototype.faceWidth = function() {
-    return 32;
+Window_MagicCraftNameEdit.prototype.faceWidth = function() {
+	return 32;
 };
 
-Window_MCNameEdit.prototype.refresh = function() {
-    this.contents.clear();
-    this.drawIcon(this._skill.iconIndex, 0, 0);
-    for (var i = 0; i < this._maxLength; i++) {
-        this.drawUnderline(i);
-    }
-    for (var j = 0; j < this._name.length; j++) {
-        this.drawChar(j);
-    }
-    var rect = this.itemRect(this._index);
-    this.setCursorRect(rect.x, rect.y, rect.width, rect.height);
+Window_MagicCraftNameEdit.prototype.refresh = function() {
+	this.contents.clear();
+	this.drawIcon(this._skill.iconIndex, 0, 0);
+	for (var i = 0; i < this._maxLength; i++) {
+		this.drawUnderline(i);
+	}
+	for (var j = 0; j < this._name.length; j++) {
+		this.drawChar(j);
+	}
+	var rect = this.itemRect(this._index);
+	this.setCursorRect(rect.x, rect.y, rect.width, rect.height);
 };
 
 
 /* Utility Functions */
-function processFormula(newSkillInst, componentSkills, catalystItems){
-	let baseFormula = newSkillInst.damage.formula;
+function processFormula(newSkillData, componentSkillsData, componentSkillsPluginData, catalystItemsPluginData){
+	let baseFormula = newSkillData.damage.formula;
 	let componentFormulas = [];
+	let componentSpellBaseDmgList = [];
 	let catalystEffects = [];
 	let finalBaseDmg = 0;
-	let formulaBaseString = "";
-	let formulaMATString = "";
-	let formulaMDFString = "";
-	let finalFormula = "";
-
-	for (let cmp of componentSkills){
+	for (let cmp of componentSkillsData) {
 		componentFormulas.push(cmp.damage.formula);
+		let componentPluginData = componentSkillsPluginData.find(skl => skl && skl.Id == cmp.id);
+		if (componentPluginData) {
+			componentSpellBaseDmgList.push(componentPluginData.BaseDamage);
+		} else {
+			componentSpellBaseDmgList.push("0");
+		}
 	}
 
-	for (let cat of catalystItems){
+	for (let cat of catalystItemsPluginData) {
 		catalystEffects = catalystEffects.concat(cat.CraftingEffects);
 	}
 
-	for (let form of componentFormulas){
-		let baseMatch = form.match(/(\d+)[^ ]/);
-		let formBaseDmg = (baseMatch.length > 0 ? baseMatch[0] : 0);
+	for (let i1 = 0; i1 < componentFormulas.length; i1++) {
+		let formBaseDmg = componentSpellBaseDmgList[i1];
 		finalBaseDmg += Math.ceil(parseInt(formBaseDmg) * mgDmgRate);
 	}
 
-	let baseSkillDmg = 0;
 	let matVal = "0";
 	let mdfVal = "0";
 	let formArr = baseFormula.split(" ");
 	let finalFormString = "";
-
 	for (let i1 = 0; i1 < catalystEffects.length; i1++){
 		let eff = catalystEffects[i1];
 		switch(eff.Effect){
@@ -3570,17 +3244,16 @@ function processFormula(newSkillInst, componentSkills, catalystItems){
 				finalBaseDmg += parseInt(eff.Value1);
 				break;
 			case "MATK":
-				matVal = String(eff.Value1);
+				matVal += String(eff.Value1);
 				break;
 			case "MDEF":
-				mdfVal = String(eff.Value1);
+				mdfVal += String(eff.Value1);
 				break;
 			default:
 				break;
 		}
 	}
 
-	let bMathPresent = false;
 	for (let i1 = 0; i1 < formArr.length; i1++){
 		let currFormPart = formArr[i1];
 		currFormPart = currFormPart.toLowerCase();
@@ -3598,39 +3271,34 @@ function processFormula(newSkillInst, componentSkills, catalystItems){
 	return finalFormString;
 }
 
-function processNewEffects(currSkill, catalystItems){
-	let stateEffects = [];
-	let finalEffects = [];
-	let existingEffects = currSkill.effects;
-
-	for (let i1 = 0; i1 < catalystItems.length; i1++){
-		let currItm = catalystItems[i1];
-		let currEffects = currItm.CraftingEffects;
-		for (let i2 = 0; i2 < currEffects.length; i2++){
-			let currEffect = currEffects[i2];
-			if (currEffect.Effect == "STATE"){
-				stateEffects.push(currEffects[i2])
-			}
-		}
+function processNewEffects(newSkillData, catalystItemsPluginData){
+	let currEffects = [];
+	for (let catalyst of catalystItemsPluginData){
+		currEffects = currEffects.concat(catalyst.CraftingEffects);
 	}
 
-	for (let i1 = 0; i1 < stateEffects.length; i1++){
-		let curEffect = stateEffects[i1];
+	let stateEffects = [];
+	for (let effect of currEffects){
+		if (effect.Effect == "STATE"){
+			stateEffects.push(effect)
+		}
+	}
+	
+	let existingEffects = newSkillData.effects;
+	let finalEffects = [];
+	for (let stateEffect of stateEffects){
 		let code = 21;
-		let dataId = curEffect.ID;
-		let value1 = curEffect.Value1;
-		let value2 = curEffect.Value2;
+		let dataId = stateEffect.ID;
+		let value1 = stateEffect.Value1;
+		let value2 = stateEffect.Value2;
 
 		let existingEffect = existingEffects.find(eff => eff.code == code && eff.dataId == dataId);
 		if (existingEffect){
-			let eff = existingEffect;
-			let val1 = math.floor(value1 + eff.value1);
-			let sklEffIdx = 0;
-
+			let val1 = math.floor(value1 + existingEffect.value1);
 			finalEffects.push({"code":eff.code, "dataId":eff.dataId, "value1":val1, "value2":eff.value2});
 
-			let sklEffectIndex = currSkill.effects.findIndex(eff => eff.code == code && eff.dataId == dataId);
-			currSkill.effects.splice(sklEffectIndex, 1);
+			let sklEffectIndex = newSkillData.effects.findIndex(eff => eff.code == code && eff.dataId == dataId);
+			newSkillData.effects.splice(sklEffectIndex, 1);
 		} else {
 			existingEffect = finalEffects.find(eff => eff.code == code && eff.dataId == dataId);
 			if (existingEffect){
@@ -3644,26 +3312,16 @@ function processNewEffects(currSkill, catalystItems){
 	return finalEffects;
 }
 
-function getComponentData(cmpIds){
-	let cmpData = [];
-
-	for (let i1 = 0; i1 < cmpIds.length; i1++){
-		if (cmpIds[i1] != 0){
-			cmpData.push($dataSkills[cmpIds[i1]]);
-		}
-	}
-
-	return cmpData;
+function getComponentData(componentIds){
+	return $dataSkills.filter(skl => skl && componentIds.includes(skl.id));
 }
 
-function getCatalystData(catIds){
-	let catData = [];
+function getComponentPluginData(componentIds){
+	return LMPGamesCore.pluginData.magicCrafting.skillData
+		.filter(skl => skl && componentIds.includes(skl.Id))
+}
 
-	for (let i1 = 0; i1 < catIds.length; i1++){
-		if (catIds[i1] != 0){
-			catData.push($dataItems[catIds[i1]]);
-		}
-	}
-
-	return catData;
+function getCatalystPluginData(catalystIds){
+	return LMPGamesCore.pluginData.magicCrafting.itemData
+		.filter(itm => itm && catalystIds.includes(itm.Id));
 }

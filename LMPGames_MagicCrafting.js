@@ -244,9 +244,6 @@ var itemBaseFactor = parseFloat(LMPGamesCore.pluginParams.magicCrafting['Item Ba
 var costItemId = parseInt(LMPGamesCore.pluginParams.magicCrafting['Cost Item Id']);
 var $newSkillInstance = {};
 
-
-
-
 /* Database Manager Alias Functions */
 var lmpGamesMagicCrafting_DataManager_IsDatabaseLoaded = DataManager.isDatabaseLoaded;
 DataManager.isDatabaseLoaded = function(){
@@ -292,13 +289,14 @@ DataManager.processMagicCraftingNoteTags = function(dataObj, typ){
 						returnObject[obj.id]["Obfuscated"] = (craftingDisplayMode == 1 ? true : false);
 						returnObject[obj.id]["baseSkillId"] = 0;
 						returnObject[obj.id]["TimesCrafted"] = 0;
-						returnObject[obj.id]["GoldBaseCost"] = 0,
-						returnObject[obj.id]["ItemBaseCost"] = 0
+						returnObject[obj.id]["GoldBaseCost"] = 0;
+						returnObject[obj.id]["ItemBaseCost"] = 0;
+						returnObject[obj.id]["CostItem"] = 0;
 					} else if (typ == "item"){
 						returnObject[obj.id]["IsCatalyst"] = false;
 						returnObject[obj.id]["CraftingEffects"] = [];
 						returnObject[obj.id]["CurrencyBaseCost"] = 0;
-						returnObject[obj.id]["CurrencyBaseFactor"] = 0.0
+						returnObject[obj.id]["CurrencyBaseFactor"] = 0.0;
 						returnObject[obj.id]["ItemBaseCost"] = 0;
 						returnObject[obj.id]["ItemBaseFactor"] = 0.0;
 					}
@@ -363,6 +361,8 @@ DataManager.processMagicCraftingNoteTags = function(dataObj, typ){
 										returnObject[obj.id].GoldBaseCost = parseFloat(noteLines[1]);
 									} else if (noteLines[0] == "ItemBaseFactor"){
 										returnObject[obj.id].ItemBaseCost = parseFloat(noteLines[1]);
+									} else if (noteLines[0] == "CostItem"){
+										returnObject[obj.id].CostItem = parseInt(noteLines[1]);
 									}
 								}
 
@@ -462,6 +462,8 @@ Scene_MagicCrafting.prototype.initialize = function(){
 	this._selectedBaseId = 0;
 	this._currentComponentSpell = "";
 	this._currentCatalystItem = "";
+	this._goldCost = 0;
+	this._itemCost = {};
 }
 
 Scene_MagicCrafting.prototype.create = function(){
@@ -490,10 +492,10 @@ Scene_MagicCrafting.prototype.createWindows = function(){
 Scene_MagicCrafting.prototype.createInfoWindow = function(){
 	let x = 310;
 	let y = this._helpWindow.height + 10;
-	let w = Graphics.width - x;
-	let h = 280;
+	let width = Graphics.width - x;
+	let height = 280;
 
-	this._magicCraftInfoWnd = new Window_MagicCraftInfo(x, y, w, h);
+	this._magicCraftInfoWnd = new Window_MagicCraftInfo(x, y, width, height);
 	this._magicCraftInfoWnd.hide();
 	this.addWindow(this._magicCraftInfoWnd);
 }
@@ -545,10 +547,10 @@ Scene_MagicCrafting.prototype.paletteCancelProcessing = function() {
 Scene_MagicCrafting.prototype.createCmpSelectionWindow = function(){
 	let x = 0;
 	let y = this._helpWindow.height + 10;
-	let w = 300;
-	let h = 280;
+	let width = 300;
+	let height = 280;
 
-	this._magicCraftCmpSelectionWnd = new Window_MagicCraftComponentSelection(x, y, w, h, this._magicCraftInfoWnd, this._helpWindow);
+	this._magicCraftCmpSelectionWnd = new Window_MagicCraftComponentSelection(x, y, width, height, this._magicCraftInfoWnd, this._helpWindow);
 	this._magicCraftCmpSelectionWnd.setHandler('ok', this.selectedComponent.bind(this));
 	this._magicCraftCmpSelectionWnd.setHandler('cancel', this.componentCancelProcessing.bind(this));
 	this._magicCraftCmpSelectionWnd.hide();
@@ -589,10 +591,10 @@ Scene_MagicCrafting.prototype.componentCancelProcessing = function(){
 Scene_MagicCrafting.prototype.createCatSelectionWindow = function(){
 	let x = 0;
 	let y = this._helpWindow.height + 10;
-	let w = 300;
-	let h = 280;
+	let width = 300;
+	let height = 280;
 
-	this._magicCraftCatSelectionWnd = new Window_MagicCraftCatalystSelection(x, y, w, h, this._magicCraftInfoWnd, this._helpWindow);
+	this._magicCraftCatSelectionWnd = new Window_MagicCraftCatalystSelection(x, y, width, height, this._magicCraftInfoWnd, this._helpWindow);
 	this._magicCraftCatSelectionWnd.setHandler('ok', this.selectedCatalyst.bind(this));
 	this._magicCraftCatSelectionWnd.setHandler('cancel', this.catalystCancelProcessing.bind(this));
 	this._magicCraftCatSelectionWnd.hide();
@@ -644,7 +646,15 @@ Scene_MagicCrafting.prototype.createBlueprintListWindow = function(){
 
 Scene_MagicCrafting.prototype.spellBlueprintSelected = function(){
 	this._selectedBaseId = this._magicCraftBlueprintListWnd.getSelectedBaseId();
-	if (craftingDisplayMode != 1){
+	if (bEnableCurrencyCostSystem) {
+		this._goldCost = this._magicCraftCostWnd.getGoldCost();
+	}
+
+	if (bEnableItemCostSystem) {
+		this._itemCost = this._magicCraftCostWnd.getItemCost();
+	}
+
+	if (craftingDisplayMode != 1) {
 		this._magicCraftInfoWnd.setMode(4);
 		this._magicCraftInfoWnd.setSelectedBaseSpell(this._selectedBaseId);
 	} else {
@@ -653,6 +663,13 @@ Scene_MagicCrafting.prototype.spellBlueprintSelected = function(){
 
 	//this._craftBlueprintListWnd.deselect();
 	this._magicCraftBlueprintListWnd.deactivate();
+	this._magicCraftBlueprintListWnd.hide();
+	this._magicCraftCostWnd.setSelectedSpellId(this._selectedBaseId);
+	if (bEnableCurrencyCostSystem || bEnableItemCostSystem) {
+		this._magicCraftCostWnd.setCosts(this._goldCost, this._itemCost);
+	}
+	
+	this._magicCraftCostWnd.show();
 	this._magicCraftCmdWnd.show();
 	this._magicCraftCmdWnd.activate();
 	this._magicCraftCmdWnd.select(0);
@@ -667,10 +684,10 @@ Scene_MagicCrafting.prototype.blueprintCancelProcessing = function() {
 }
 
 Scene_MagicCrafting.prototype.createCostWindow = function(){
-	let x = this._magicCraftPaletteWnd.getWidth() + 10;
-	let y = this._magicCraftInfoWnd.getHeight() + this._helpWindow.getHeight() + 20;
-	let width = this._magicCraftInfoWnd.getWidth();
-	let height = 115;
+	let x = 0;
+	let y = this._magicCraftPaletteWnd.getHeight() + 20 + this._helpWindow.height;
+	let width = 300;
+	let height = 180;
 
 	this._magicCraftCostWnd = new Window_MagicCraftCost(x, y, width, height);
 	this._magicCraftCostWnd.show();
@@ -680,10 +697,10 @@ Scene_MagicCrafting.prototype.createCostWindow = function(){
 Scene_MagicCrafting.prototype.createCommandWindow = function(){
 	let x = this._magicCraftPaletteWnd.getWidth() + 10;
 	let y = this._magicCraftInfoWnd.getHeight() + this._magicCraftCostWnd.getHeight() + this._helpWindow.getHeight() + 30;
-	let w = this._magicCraftInfoWnd.getWidth();
-	let h = 60;
+	let width = this._magicCraftInfoWnd.getWidth();
+	let height = 60;
 
-	this._magicCraftCmdWnd = new Window_MagicCraftCommand(x, y, w, h);
+	this._magicCraftCmdWnd = new Window_MagicCraftCommand(x, y, width, height);
 	this._magicCraftCmdWnd.setHandler('ok', this.cmdOkProcessing.bind(this));
 	this._magicCraftCmdWnd.setHandler('cancel', this.cmdCancelProcessing.bind(this));
 	this._magicCraftCmdWnd.hide();
@@ -696,8 +713,6 @@ Scene_MagicCrafting.prototype.cmdOkProcessing = function(){
 	this._magicCraftCmdWnd.deselect();
 	this._magicCraftCmdWnd.deactivate();
 	this._magicCraftInfoWnd.deactivate();
-	this._magicCraftPaletteWnd.resetPallete();
-
 	this.unlockSpell();
 }
 
@@ -801,6 +816,7 @@ Scene_MagicCrafting.prototype.unlockSpell = function(){
 	this._magicCraftCmdWnd.deactivate();
 	this._magicCraftPaletteWnd.activate();
 	this._magicCraftPaletteWnd.select(0);
+	this._magicCraftCostWnd.hide();
 }
 
 Scene_MagicCrafting.prototype.createNewSkillData = function(currentSkillData){
@@ -934,17 +950,20 @@ Scene_MagicCrafting.prototype.resetSceneProperties = function(){
 
 	this._currentComponentSpell = "";
 	this._currentCatalystItem = "";
-	this._craftBlueprintListWnd.updateSelectedComponents(this._selectedComponents);
-	this._craftInfoWnd.updateSelectedComponents(this._selectedComponents);
-	this._craftInfoWnd.updateSelectedCatalysts(this._selectedCatalysts);
+	this._magicCraftBlueprintListWnd.updateSelectedComponents(this._selectedComponents);
+	this._magicCraftInfoWnd.updateSelectedComponents(this._selectedComponents);
+	this._magicCraftInfoWnd.updateSelectedCatalysts(this._selectedCatalysts);
 	this._selectedBaseId = 0;
 }
 
 Scene_MagicCrafting.prototype.cmdCancelProcessing = function(){
-	this._craftCmdWnd.deactivate();
-	this._craftCmdWnd.deselect();
-	this._craftBlueprintListWnd.activate();
-	this._craftBlueprintListWnd.select(0);
+	this._magicCraftCmdWnd.deactivate();
+	this._magicCraftCmdWnd.deselect();
+	this._magicCraftCostWnd.hide();s
+	this._magicCraftBlueprintListWnd.show();
+	this._magicCraftBlueprintListWnd.activate();
+	this._magicCraftBlueprintListWnd.select(0);
+
 }
 
 /* Window_MagicCraftPalette Functions */

@@ -77,6 +77,12 @@
 * @parent Main Settings
 *
 *
+* @param Enable Name Aliasing
+* @desc When enabled, if the name would not fit within a window, a shortened name will be used.
+* @type boolean
+* @default false
+*
+*
 * @param Cost Settings
 * @desc Settings related to the Item/Gold cost systems
 *
@@ -228,7 +234,6 @@ var mgDmgRate = parseInt(LMPGamesCore.pluginParams.magicCrafting['Craft Magic Da
 var canUseCatColor = LMPGamesCore.pluginParams.magicCrafting['Can Use Catalyst Color'];
 var cantUseCatColor = LMPGamesCore.pluginParams.magicCrafting['Cannot Use Catalyst Color'];
 var craftingDisplayMode = parseInt(LMPGamesCore.pluginParams.magicCrafting['Display mode']);
-var bEnableItemSystem = (LMPGamesCore.pluginParams.magicCrafting['Enable Item Cost System'] === 'true');
 var bPreventRename = (LMPGamesCore.pluginParams.magicCrafting['Restrict Spell Renaming'] === 'true');
 var maxObfusChars = parseInt(LMPGamesCore.pluginParams.magicCrafting['Max Number of Obfuscation Characters']);
 var obfuscationChar = LMPGamesCore.pluginParams.magicCrafting['Obfuscation Character'];
@@ -236,13 +241,18 @@ var maxRefineLevel = parseInt(LMPGamesCore.pluginParams.magicCrafting['Max Refin
 var bEnableCurrencyCostSystem = (LMPGamesCore.pluginParams.magicCrafting['Enable Currency Cost System'] === 'true');
 var bEnableItemCostSystem = (LMPGamesCore.pluginParams.magicCrafting['Enable Item Cost System'] == 'true');
 var currencyCostFormula = LMPGamesCore.pluginParams.magicCrafting['Gold Cost Formula'];
-var currencyBaseCost = parseInt(LMPGamesCore.pluginParams.magicCrafting['Gold Base Cost']);
-var currencyBaseFactor = parseFloat(LMPGamesCore.pluginParams.magicCrafting['Gold Base Factor']);
+var defaultCurrencyBaseCost = parseInt(LMPGamesCore.pluginParams.magicCrafting['Gold Base Cost']);
+var defaultCurrencyBaseFactor = parseFloat(LMPGamesCore.pluginParams.magicCrafting['Gold Base Factor']);
 var itemCostFormula = LMPGamesCore.pluginParams.magicCrafting['Item Cost Formula'];
-var itemBaseCost = parseInt(LMPGamesCore.pluginParams.magicCrafting['Item Base Cost']);
-var itemBaseFactor = parseFloat(LMPGamesCore.pluginParams.magicCrafting['Item Base Factor']);
-var costItemId = parseInt(LMPGamesCore.pluginParams.magicCrafting['Cost Item Id']);
+var defaultItemBaseCost = parseInt(LMPGamesCore.pluginParams.magicCrafting['Item Base Cost']);
+var defaultItemBaseFactor = parseFloat(LMPGamesCore.pluginParams.magicCrafting['Item Base Factor']);
+var defaultCostItemId = parseInt(LMPGamesCore.pluginParams.magicCrafting['Cost Item Id']);
+var bEnableNameAliasing = (LMPGamesCore.pluginParams.magicCrafting['Enable Name Aliasing'] === 'true');
 var $newSkillInstance = {};
+
+LMPGamesCore.pluginSettings.magicCrafting = {
+	startingSkillId : startId
+};
 
 /* Database Manager Alias Functions */
 var lmpGamesMagicCrafting_DataManager_IsDatabaseLoaded = DataManager.isDatabaseLoaded;
@@ -271,6 +281,8 @@ DataManager.processMagicCraftingNoteTags = function(dataObj, typ){
 					let bStartMCraftingTag = false;
 					let bEndMCraftingTag = false;
 
+					returnObject[obj.id]["Id"] = obj.id;
+
 					if (typ == "class"){
 						returnObject[obj.id]["CanLearnMagic"] = false;
 						returnObject[obj.id]["MaxCatalysts"] = 0;
@@ -291,7 +303,8 @@ DataManager.processMagicCraftingNoteTags = function(dataObj, typ){
 						returnObject[obj.id]["TimesCrafted"] = 0;
 						returnObject[obj.id]["GoldBaseCost"] = 0;
 						returnObject[obj.id]["ItemBaseCost"] = 0;
-						returnObject[obj.id]["CostItem"] = 0;
+						returnObject[obj.id]["CostItemId"] = 0;
+						returnObject[obj.id]["BaseDamage"] = 0;
 					} else if (typ == "item"){
 						returnObject[obj.id]["IsCatalyst"] = false;
 						returnObject[obj.id]["CraftingEffects"] = [];
@@ -299,6 +312,7 @@ DataManager.processMagicCraftingNoteTags = function(dataObj, typ){
 						returnObject[obj.id]["CurrencyBaseFactor"] = 0.0;
 						returnObject[obj.id]["ItemBaseCost"] = 0;
 						returnObject[obj.id]["ItemBaseFactor"] = 0.0;
+						returnObject[obj.id]["CostItemId"] = 0;
 					}
 
 					for (let noteLine of noteData){
@@ -353,16 +367,8 @@ DataManager.processMagicCraftingNoteTags = function(dataObj, typ){
 										for (let id of parsedClassIdData){
 											returnObject[obj.id].ClassIds.push(parseInt(id));
 										}
-									} else  if (noteLines[0] == "CurrencyBaseCost"){ //Common
-										returnObject[obj.id].GoldBaseCost = parseInt(noteLines[1]);
-									} else if (noteLines[0] == "ItemBaseCost"){
-										returnObject[obj.id].ItemBaseCost = parseInt(noteLines[1]);
-									} else  if (noteLines[0] == "CurrencyBaseFactor"){
-										returnObject[obj.id].GoldBaseCost = parseFloat(noteLines[1]);
-									} else if (noteLines[0] == "ItemBaseFactor"){
-										returnObject[obj.id].ItemBaseCost = parseFloat(noteLines[1]);
-									} else if (noteLines[0] == "CostItem"){
-										returnObject[obj.id].CostItem = parseInt(noteLines[1]);
+									} else if (noteLines[0] == "BaseDamage") {
+										returnObject[obj.id].BaseDamage = parseInt(noteLines[1]);
 									}
 								}
 
@@ -419,14 +425,14 @@ Game_Interpreter.prototype.pluginCommand = function(command, args){
 }
 
 Game_Interpreter.prototype.setSkillCraftable = function(skillId){
-	let skillPluginData = LMPGamesCore.pluginData.magicCrafting.skillData.find(sk => sk && sk.id == skillId)
+	let skillPluginData = LMPGamesCore.pluginData.magicCrafting.skillData.find(sk => sk && sk.Id == skillId)
 	if (skillPluginData) {
 		skillPluginData.CanCraft = true;
 	}
 }
 
 Game_Interpreter.prototype.setSkillUncraftable = function(skillId){
-	let skillPluginData = LMPGamesCore.pluginData.magicCrafting.skillData.find(sk => sk && sk.id == skillId)
+	let skillPluginData = LMPGamesCore.pluginData.magicCrafting.skillData.find(sk => sk && sk.Id == skillId)
 	if (skillPluginData) {
 		skillPluginData.CanCraft = false;
 	}
@@ -439,6 +445,8 @@ Scene_MagicCrafting.prototype.constructor = Scene_MagicCrafting;
 Scene_MagicCrafting.prototype.initialize = function(){
 	Scene_MenuBase.prototype.initialize.call(this);
 	LMPGamesCore.functions.enableWindowScrolling(true);
+	LMPGamesCore.functions.enableNameAlias(bEnableNameAliasing);
+
 	this._magicCraftPaletteWnd = undefined;
 	this._magicCraftCmpSelectionWnd = undefined;
 	this._magicCraftCatSelectionWid = undefined;
@@ -446,54 +454,58 @@ Scene_MagicCrafting.prototype.initialize = function(){
 	this._magicCraftInfoWnd = undefined;
 	this._magicCraftingCmdWnd = undefined;
 	this._magicCraftGoldWnd = undefined;
-	this._infoWndMode = 0;
 	this._selectedComponents = {
 		"Component1": 0,
 		"Component2": 0,
-		"Component3": 0
+		"Component3": 0,
+		"Component4": 0,
+		"Component5": 0
 	};
 
 	this._selectedCatalysts = {
 		"Catalyst1": 0,
 		"Catalyst2": 0,
-		"Catalyst3": 0
+		"Catalyst3": 0,
+		"Catalyst4": 0,
+		"Catalyst5": 0
 	};
 
 	this._selectedBaseId = 0;
-	this._currentComponentSpell = "";
-	this._currentCatalystItem = "";
-	this._goldCost = 0;
-	this._itemCost = {};
+	this._magicCurrentComponentSpell = "";
+	this._magicCurrentCatalystItem = "";
 }
 
 Scene_MagicCrafting.prototype.create = function(){
 	Scene_MenuBase.prototype.create.call(this);
 	this.createWindows();
-	this._magicCraftPaletteWnd.setCraftListWindow(this._magicCraftBlueprintListWnd);
 	this._magicCraftPaletteWnd.show();
 	this._magicCraftPaletteWnd.activate();
 	this._magicCraftPaletteWnd.select(0);
 	this._magicCraftInfoWnd.show();
-	this._magicCraftBlueprintListWnd.refresh();
-	this._magicCraftBlueprintListWnd.show();
 }
 
 Scene_MagicCrafting.prototype.createWindows = function(){
 	this.createHelpWindow();
 	this.createInfoWindow();
-	this.createCostWindow();
 	this.createPaletteWindow();
+	this.createCostWindow();
 	this.createCmpSelectionWindow();
 	this.createCatSelectionWindow();
 	this.createBlueprintListWindow();
 	this.createCommandWindow();
+
+	this.assignWindows();
+}
+
+Scene_MagicCrafting.prototype.assignWindows = function(){
+	this._magicCraftPaletteWnd.setCraftListWindow(this._magicCraftBlueprintListWnd);
 }
 
 Scene_MagicCrafting.prototype.createInfoWindow = function(){
 	let x = 310;
 	let y = this._helpWindow.height + 10;
 	let width = Graphics.width - x;
-	let height = 280;
+	let height = 360;
 
 	this._magicCraftInfoWnd = new Window_MagicCraftInfo(x, y, width, height);
 	this._magicCraftInfoWnd.hide();
@@ -514,28 +526,36 @@ Scene_MagicCrafting.prototype.createPaletteWindow = function(){
 }
 
 Scene_MagicCrafting.prototype.paletteOkProcessing = function(){
-	this._infoWndMode = this._magicCraftPaletteWnd.getSelectedMode();
+	let infoWndMode = this._magicCraftPaletteWnd.getSelectedMode();
 	this._magicCurrentComponentSpell = this._magicCraftPaletteWnd.getCurrentComponent();
 	this._magicCurrentCatalystItem = this._magicCraftPaletteWnd.getCurrentCatalyst();
-	this._magicCraftInfoWnd.setMode(this._infoWndMode);
+	this._magicCraftInfoWnd.setMode(infoWndMode);
 	this._magicCraftInfoWnd.refresh();
 	this._magicCraftPaletteWnd.deselect();
 	this._magicCraftPaletteWnd.deactivate();
+	this._magicCraftPaletteWnd.hide();
 
-	if (this._infoWndMode == 1){ //Component
+	if (infoWndMode == 1){ //Component
 		this._magicCraftPaletteWnd.hide();
 		this._magicCraftCmpSelectionWnd.show();
 		this._magicCraftCmpSelectionWnd.activate();
 		this._magicCraftCmpSelectionWnd.select(0);
-	} else if (this._infoWndMode == 2) { //Catalyst
-		this._magicCcraftPaletteWnd.hide();
+	} else if (infoWndMode == 2) { //Catalyst
+		this._magicCraftPaletteWnd.hide();
 		this._magicCraftCatSelectionWnd.setSelectedCatalysts(this._selectedCatalysts);
 		this._magicCraftCatSelectionWnd.show();
 		this._magicCraftCatSelectionWnd.activate();
 		this._magicCraftCatSelectionWnd.select(0);
 	} else { //BlueprintList
+		this._magicCraftBlueprintListWnd.refresh();
+		this._magicCraftBlueprintListWnd.show();
 		this._magicCraftBlueprintListWnd.activate();
 		this._magicCraftBlueprintListWnd.select(0);
+
+		if (bEnableCurrencyCostSystem || bEnableItemCostSystem) {
+			this._magicCraftCostWnd.refresh();
+			this._magicCraftCostWnd.show();
+		}
 	}
 }
 
@@ -559,10 +579,9 @@ Scene_MagicCrafting.prototype.createCmpSelectionWindow = function(){
 
 Scene_MagicCrafting.prototype.selectedComponent = function(){
 	let selectedCmp = this._magicCraftCmpSelectionWnd.getSelectedComponent();
-	this._selectedComponents[this._currentComponentSpell] = selectedCmp;
+	this._selectedComponents[this._magicCurrentComponentSpell] = selectedCmp;
 
 	this._magicCraftBlueprintListWnd.updateSelectedComponents(this._selectedComponents);
-	this._magicCraftPaletteWnd.updateSelectedComponents(this._selectedComponents);
 	this._magicCraftInfoWnd.setMode(0);
 	this._magicCraftInfoWnd.updateSelectedComponents(this._selectedComponents);
 	this._magicCraftCostWnd.updateComponents(this._selectedComponents);
@@ -570,10 +589,11 @@ Scene_MagicCrafting.prototype.selectedComponent = function(){
 	this._magicCraftCmpSelectionWnd.hide();
 	this._magicCraftCmpSelectionWnd.deselect();
 	this._magicCraftCmpSelectionWnd.deactivate();
+	LMPGamesCore.functions.resetSelect('', this._magicCraftPaletteWnd);
+	this._magicCraftPaletteWnd.refresh();
 	this._magicCraftPaletteWnd.show();
 	this._magicCraftPaletteWnd.activate();
 	this._magicCraftPaletteWnd.select(0);
-	this._magicCraftPaletteWnd.resetSelect('reset');
 }
 
 Scene_MagicCrafting.prototype.componentCancelProcessing = function(){
@@ -582,10 +602,11 @@ Scene_MagicCrafting.prototype.componentCancelProcessing = function(){
 	this._magicCraftCmpSelectionWnd.hide();
 	this._magicCraftCmpSelectionWnd.deselect();
 	this._magicCraftCmpSelectionWnd.deactivate();
+	LMPGamesCore.functions.resetSelect('', this._magicCraftPaletteWnd);
 	this._magicCraftPaletteWnd.show();
 	this._magicCraftPaletteWnd.activate();
 	this._magicCraftPaletteWnd.select(0);
-	this._magicCraftPaletteWnd.resetSelect('reset');
+
 }
 
 Scene_MagicCrafting.prototype.createCatSelectionWindow = function(){
@@ -603,7 +624,7 @@ Scene_MagicCrafting.prototype.createCatSelectionWindow = function(){
 
 Scene_MagicCrafting.prototype.selectedCatalyst = function(){
 	let selectedCat = this._magicCraftCatSelectionWnd.getSelectedCatalyst();
-	this._selectedCatalysts[this._currentCatalystItem] = selectedCat;
+	this._selectedCatalysts[this._magicCurrentCatalystItem] = selectedCat;
 
 	this._magicCraftInfoWnd.setMode(0);
 	this._magicCraftPaletteWnd.updateSelectedCatalysts(this._selectedCatalysts);
@@ -613,10 +634,10 @@ Scene_MagicCrafting.prototype.selectedCatalyst = function(){
 	this._magicCraftCatSelectionWnd.hide();
 	this._magicCraftCatSelectionWnd.deselect();
 	this._magicCraftCatSelectionWnd.deactivate();
+	LMPGamesCore.functions.resetSelect('', this._magicCraftPaletteWnd);
 	this._magicCraftPaletteWnd.show();
 	this._magicCraftPaletteWnd.activate();
 	this._magicCraftPaletteWnd.select(0);
-	this._magicCraftPaletteWnd.resetSelect('reset');
 }
 
 Scene_MagicCrafting.prototype.catalystCancelProcessing = function(){
@@ -625,17 +646,17 @@ Scene_MagicCrafting.prototype.catalystCancelProcessing = function(){
 	this._magicCraftCatSelectionWnd.deselect();
 	this._magicCraftCatSelectionWnd.deactivate();
 
+	LMPGamesCore.functions.resetSelect('', this._magicCraftPaletteWnd);
 	this._magicCraftPaletteWnd.show();
 	this._magicCraftPaletteWnd.activate();
 	this._magicCraftPaletteWnd.select(0);
-	this._magicCraftPaletteWnd.resetSelect('reset');
 }
 
 Scene_MagicCrafting.prototype.createBlueprintListWindow = function(){
 	let x = 0;
-	let y = this._magicCraftPaletteWnd.getHeight() + 20 + this._helpWindow.height;
+	let y = this._helpWindow.height + 10;
 	let w = 300;
-	let h = 180;
+	let h = 210;
 
 	this._magicCraftBlueprintListWnd = new Window_MagicCraftBlueprintList(x, y, w, h, this._magicCraftInfoWnd, this._selectedComponents, this._magicCraftCostWnd);
 	this._magicCraftBlueprintListWnd.setHandler('ok', this.spellBlueprintSelected.bind(this));
@@ -661,14 +682,12 @@ Scene_MagicCrafting.prototype.spellBlueprintSelected = function(){
 		this._magicCraftInfoWnd.setSelectedBaseSpell(0);
 	}
 
-	//this._craftBlueprintListWnd.deselect();
 	this._magicCraftBlueprintListWnd.deactivate();
-	this._magicCraftBlueprintListWnd.hide();
 	this._magicCraftCostWnd.setSelectedSpellId(this._selectedBaseId);
 	if (bEnableCurrencyCostSystem || bEnableItemCostSystem) {
 		this._magicCraftCostWnd.setCosts(this._goldCost, this._itemCost);
 	}
-	
+
 	this._magicCraftCostWnd.show();
 	this._magicCraftCmdWnd.show();
 	this._magicCraftCmdWnd.activate();
@@ -679,6 +698,8 @@ Scene_MagicCrafting.prototype.blueprintCancelProcessing = function() {
 	this._magicCraftInfoWnd.setMode(0);
 	this._magicCraftBlueprintListWnd.deactivate();
 	this._magicCraftBlueprintListWnd.deselect();
+	this._magicCraftBlueprintListWnd.hide();
+	this._magicCraftPaletteWnd.show();
 	this._magicCraftPaletteWnd.activate();
 	this._magicCraftPaletteWnd.select(0);
 }
@@ -687,7 +708,7 @@ Scene_MagicCrafting.prototype.createCostWindow = function(){
 	let x = 0;
 	let y = this._magicCraftPaletteWnd.getHeight() + 20 + this._helpWindow.height;
 	let width = 300;
-	let height = 180;
+	let height = 210;
 
 	this._magicCraftCostWnd = new Window_MagicCraftCost(x, y, width, height);
 	this._magicCraftCostWnd.show();
@@ -696,7 +717,7 @@ Scene_MagicCrafting.prototype.createCostWindow = function(){
 
 Scene_MagicCrafting.prototype.createCommandWindow = function(){
 	let x = this._magicCraftPaletteWnd.getWidth() + 10;
-	let y = this._magicCraftInfoWnd.getHeight() + this._magicCraftCostWnd.getHeight() + this._helpWindow.getHeight() + 30;
+	let y = this._magicCraftInfoWnd.getHeight() + this._helpWindow.height + 20;
 	let width = this._magicCraftInfoWnd.getWidth();
 	let height = 60;
 
@@ -712,6 +733,7 @@ Scene_MagicCrafting.prototype.cmdOkProcessing = function(){
 	this._magicCraftInfoWnd.setSelectedBaseSpell(this._selectedBaseId);
 	this._magicCraftCmdWnd.deselect();
 	this._magicCraftCmdWnd.deactivate();
+	this._magicCraftCmdWnd.hide();
 	this._magicCraftInfoWnd.deactivate();
 	this.unlockSpell();
 }
@@ -728,7 +750,7 @@ Scene_MagicCrafting.prototype.unlockSpell = function(){
 		if (bPreventRename){
 			existingSkillPluginData = LMPGamesCore.pluginData.magicCrafting.skillData
 				.find(skl => skl && skl.BaseSkillId == this._selectedBaseId);
-			
+
 			if (existingSkillPluginData) {
 				existingSkillData = $dataSkills.find(skl => skl && skl.id == existingSkillPluginData.Id);
 			} else {
@@ -772,13 +794,8 @@ Scene_MagicCrafting.prototype.unlockSpell = function(){
 						this.processMagicSchoolsUpdates(newSkillData, newSkillPluginData);
 					}
 
-					if (catalystItemIds.length > 0){
-						catalystItems = $dataItems.filter(itm => itm && catalystItemIds.includes(itm.id));
-						for (let itm of catalystItems){
-							$gameParty.loseItem(itm, 1, false);
-						}
-					}
-					resetSceneProperties
+					this.processCosts(catalystItemIds);
+					this.resetSceneProperties();
 
 					if (!bPreventRename){
 						$newSkillInstance = newSkillInst;
@@ -807,22 +824,42 @@ Scene_MagicCrafting.prototype.unlockSpell = function(){
 					$gameParty.loseItem(itm, 1, false);
 				}
 			}
-			
+
+			this.processCosts(catalystItemIds);
 			this.resetSceneProperties();
 		}
 	}
 
-	this._magicCraftCmdWnd.hide();
-	this._magicCraftCmdWnd.deactivate();
+	this._magicCraftPaletteWnd.show();
 	this._magicCraftPaletteWnd.activate();
 	this._magicCraftPaletteWnd.select(0);
-	this._magicCraftCostWnd.hide();
+	if (bEnableItemCostSystem || bEnableCurrencyCostSystem) {
+		this._magicCraftCostWnd.hide();
+	}
+
+	this._magicCraftBlueprintListWnd.hide();
 }
 
 Scene_MagicCrafting.prototype.createNewSkillData = function(currentSkillData){
-	let currentId = LMPGamesCore.pluginData.magicCrafting.skillData.at(-1);
+	let currentPluginSkills = LMPGamesCore.pluginData.magicCrafting.skillData
+		.filter(skl => skl);
+
 	let newSkillData;
-	if (currentId != undefined) {	
+	let currentId = 0;
+	if (currentPluginSkills.length > 0) {
+		let lastSkill = currentPluginSkills[currentPluginSkills.length - 1];
+		currentId = lastSkill.Id;
+	} else {
+		let filteredSkillData = $dataSkills.filter(skl => skl);
+		let lastSkill = filteredSkillData[filteredSkillData.length - 1];
+		if (lastSkill.id > startId) {
+			currentId = lastSkill.id;
+		} else {
+			currentId = startId;
+		}
+	}
+
+	if (currentId != 0) {
 		newSkillData = JSON.parse(JSON.stringify(currentSkillData));
 		newSkillData.id = currentId + 1;
 	}
@@ -833,7 +870,7 @@ Scene_MagicCrafting.prototype.createNewSkillData = function(currentSkillData){
 Scene_MagicCrafting.prototype.createNewSkillPluginData = function(currentSkillPluginData){
 	let currentId = LMPGamesCore.pluginData.magicCrafting.skillData.at(-1);
 	let newSkillPluginData;
-	if (currentId != undefined) {	
+	if (currentId != undefined) {
 		newSkillPluginData = JSON.parse(JSON.stringify(currentSkillPluginData));
 		newSkillPluginData.id = currentId + 1;
 	}
@@ -860,8 +897,8 @@ Scene_MagicCrafting.prototype.processCraftingSkillPluginData = function(skillPlu
 	}
 
 	LMPGamesCore.pluginData.magicCrafting.skillData[skillPluginData.Id].CraftingShowName = false;
-	LMPGamesCore.pluginData.magicCrafting.skillData[skillPluginData.Id].BaseSkillId = this._selectedBaseId;	
-	LMPGamesCore.pluginData.magicCrafting.skillData[skillPluginData.Id].IsRecipe = false;	
+	LMPGamesCore.pluginData.magicCrafting.skillData[skillPluginData.Id].BaseSkillId = this._selectedBaseId;
+	LMPGamesCore.pluginData.magicCrafting.skillData[skillPluginData.Id].IsRecipe = false;
 	LMPGamesCore.pluginData.magicCrafting.skillData[skillPluginData.Id].Obfuscated = false;
 	LMPGamesCore.pluginData.magicCrafting.skillData[skillPluginData.Id].CanLearn = (bEnableMagicSchoolsSupport ? true : false);
 	LMPGamesCore.pluginData.magicCrafting.skillData[skillPluginData.Id].CanCraft = false;
@@ -940,12 +977,17 @@ Scene_MagicCrafting.prototype.resetSceneProperties = function(){
 	this._selectedComponents = {
 		"Component1": 0,
 		"Component2": 0,
-		"Component3": 0
+		"Component3": 0,
+		"Component4": 0,
+		"Component5": 0
 	};
+
 	this._selectedCatalysts = {
 		"Catalyst1": 0,
 		"Catalyst2": 0,
-		"Catalyst3": 0
+		"Catalyst3": 0,
+		"Catalyst4": 0,
+		"Catalyst5": 0
 	};
 
 	this._currentComponentSpell = "";
@@ -956,10 +998,42 @@ Scene_MagicCrafting.prototype.resetSceneProperties = function(){
 	this._selectedBaseId = 0;
 }
 
+Scene_MagicCrafting.prototype.processCosts = function(catalystItemIds){
+	if (catalystItemIds.length > 0) {
+		let itemsToRemove = {};
+		for (let itemId of catalystItemIds) {
+			if (!itemsToRemove.hasOwnProperty(itemId)){
+				itemsToRemove[itemId] = 0;
+			}
+
+			itemstoRemove[itemId] += 1;
+		}
+
+		for (let key of Object.keys(itemsToRemove)) {
+			let amount = itemsToRemove[key];
+			let itemData = $dataItem[key];
+			$gameParty.loseItem(itemData, amount, false);
+		}
+	}
+
+	if (bEnableCurrencyCostSystem) {
+		$gameParty.loseGold(this._goldCost);
+	}
+
+	if (bEnableItemCostSystem) {
+		let costItems = this._magicCraftCostWnd.getCostItems();
+		for (let key of Object.values(costItems)){
+			let amount = costItems[key];
+			let itemData  = $dataItems[key];
+			$gameParty.loseItem(itemData, amount, false);
+		}
+	}
+}
+
 Scene_MagicCrafting.prototype.cmdCancelProcessing = function(){
 	this._magicCraftCmdWnd.deactivate();
 	this._magicCraftCmdWnd.deselect();
-	this._magicCraftCostWnd.hide();s
+	this._magicCraftCostWnd.hide();
 	this._magicCraftBlueprintListWnd.show();
 	this._magicCraftBlueprintListWnd.activate();
 	this._magicCraftBlueprintListWnd.select(0);
@@ -984,21 +1058,22 @@ Window_MagicCraftPalette.prototype.initialize = function(x, y, w, h, helpWnd){
 	this._totalItems = 0;
 	this._selectedMode = 0;
 	this._craftingActor = $gameParty.allMembers()[0];
-	this._selectedCatalysts = [];
-	this._selectedComponents = [];
 	this._bCanCraft = false;
 	this._blueprintListWnd = null;
 	this._helpWindow = helpWnd;
+	this._selectedComponents = [];
+	this._selectedCatalysts = [];
 
 	this._actClsId = this._craftingActor._classId;
-	this.getClassConfig();
 	this._numOfComponents = 0;
 	this._numOfCatalysts = 0;
+	this.getClassConfig();
 	this._currentCmp = "";
 	this._currentCat = "";
 	this.refresh();
 }
 
+//Getters
 Window_MagicCraftPalette.prototype.getClassConfig = function(){
 	let classPluginData = LMPGamesCore.pluginData.magicCrafting.classData.find(cls => cls && cls.Id == this._actClsId);
 	if (classPluginData) {
@@ -1007,33 +1082,10 @@ Window_MagicCraftPalette.prototype.getClassConfig = function(){
 	}
 }
 
-Window_MagicCraftPalette.prototype.updateSelectedComponents = function(selCmp) {
-	this._selectedComponents = [];
-	for (let key of Object.keys(selCmp)){
-		let compSkillId = selCmp[key];
-		this._selectedComponents.push(compSkillId);
-	}
-
-	this.refresh();
-}
-
-Window_MagicCraftPalette.prototype.updateSelectedCatalysts = function(selCat) {
-	this._selectedCatalysts = [];
-	for (let key of Object.keys(selCat)){
-		let catItemId = selCat[key];
-		this._selectedCatalysts.push(catItemId);
-	}
-}
-
 Window_MagicCraftPalette.prototype.getHeight = function() { return this._height; }
 Window_MagicCraftPalette.prototype.getWidth = function() { return this._width; }
 Window_MagicCraftPalette.prototype.getSelectedMode = function() { return this._selectedMode; }
 Window_MagicCraftPalette.prototype.maxItems = function() { return (this._comList ? this._comList[this._pageIndex].length : 1); }
-Window_MagicCraftPalette.prototype.setCraftListWindow = function(subWnd) {
-	this._blueprintListWnd = subWnd;
-	this.refresh();
-}
-
 Window_MagicCraftPalette.prototype.itemHeight = function() {
 	let clientHeight = this._height - this.padding * 2;
 	return Math.floor(clientHeight / this.numVisibleRows());
@@ -1046,6 +1098,27 @@ Window_MagicCraftPalette.prototype.itemWidth = function() {
 
 Window_MagicCraftPalette.prototype.getCurrentComponent = function() { return this._currentCmp; }
 Window_MagicCraftPalette.prototype.getCurrentCatalyst = function() { return this._currentCat; }
+Window_MagicCraftPalette.prototype.numVisibleRows = function() { return 4; }
+
+//Setters
+Window_MagicCraftPalette.prototype.setCraftListWindow = function(subWnd) {
+	this._blueprintListWnd = subWnd;
+	this.refresh();
+}
+
+Window_MagicCraftPalette.prototype.setSelectedComponents = function(selectedComponents){
+	this._selectedComponents = selectedComponents;
+}
+
+Window_MagicCraftPalette.prototype.setSelectedCatalysts = function(selectedCatalysts){
+	this._selectedCatalysts = selectedCatalysts;
+}
+
+Window_MagicCraftPalette.prototype.setCurrentCompId = function(cmpId) { this._selectedComponents[this._currentCmp] = cmpId; }
+Window_MagicCraftPalette.prototype.setCurrentCatId = function(catId) { this._selectedCatalysts[this._currentCat] = catId; }
+
+
+//Doers
 Window_MagicCraftPalette.prototype.itemRect = function(index){
 	let rect = new Rectangle();
 	let maxCols = this.maxCols();
@@ -1056,12 +1129,9 @@ Window_MagicCraftPalette.prototype.itemRect = function(index){
 	return rect;
 }
 
-Window_MagicCraftPalette.prototype.numVisibleRows = function() { return 4; }
-Window_MagicCraftPalette.prototype.setCurrentCompId = function(cmpId) { this._selectedComponents[this._currentCmp] = cmpId; }
-Window_MagicCraftPalette.prototype.setCurrentCatId = function(catId) { this._selectedCatalysts[this._currentCat] = catId; }
 Window_MagicCraftPalette.prototype.resetPallete = function(){
 	this._selectedComponents = [];
-	this._selectedCatalysts =[];
+	this._selectedCatalysts = [];
 	this._currentCat = "";
 	this._currentCmp = "";
 	this._selectedMode = 0;
@@ -1110,12 +1180,12 @@ Window_MagicCraftPalette.prototype.buildComList = function(){
 			this._helpTxtList.push("Select an item for Catalyst " + String(i1+1));
 			this._totalItems++;
 		} else {
-		this._comList.push(this._intComList);
-		this._intComList = [];
-		this._intComList.push("Catalyst " + String(i1+1));
-		this._helpTxtList.push("Select an item for Catalyst " + String(i1+1));
-		this._totalItems++;
-	}
+			this._comList.push(this._intComList);
+			this._intComList = [];
+			this._intComList.push("Catalyst " + String(i1+1));
+			this._helpTxtList.push("Select an item for Catalyst " + String(i1+1));
+			this._totalItems++;
+		}
 	}
 
 	let miscCmds = ["Craft Skill", "Cancel"];
@@ -1127,18 +1197,18 @@ Window_MagicCraftPalette.prototype.buildComList = function(){
 			this._helpTxtList.push(miscCmdTxt[i1]);
 			this._totalItems++;
 		} else {
+			this._comList.push(this._intComList);
+			this._intComList = [];
+			this._intComList.push(miscCmds[i1]);
+			this._helpTxtList.push(miscCmdTxt[i1]);
+			this._totalItems++;
+		}
+	}
+
+	if (this._intComList.length > 0){
 		this._comList.push(this._intComList);
 		this._intComList = [];
-		this._intComList.push(miscCmds[i1]);
-		this._helpTxtList.push(miscCmdTxt[i1]);
-		this._totalItems++;
 	}
-}
-
-if (this._intComList.length > 0){
-	this._comList.push(this._intComList);
-	this._intComList = [];
-}
 }
 
 Window_MagicCraftPalette.prototype.processCursorMove = function() {
@@ -1154,8 +1224,10 @@ Window_MagicCraftPalette.prototype.updateHelp = function(){
 
 Window_MagicCraftPalette.prototype.select = function(index){
 	this._index = index;
-	if (this._comList.length > 0 && this._comList[this._pageIndex].length > 0){
-		if (index > -1 && index != this._comList[this._pageIndex].length && this._comList[this._pageIndex][index] != "Cancel"){
+	if (index > -1 && this._comList && this._comList.length > 0 &&
+			this._comList[this._pageIndex] && this._comList[this._pageIndex].length > 0
+	){
+		if (index != this._comList[this._pageIndex].length && this._comList[this._pageIndex][index] != "Cancel"){
 			selectedCommand = this._comList[this._pageIndex][index];
 			if (selectedCommand.contains("Component")){
 				let commandArr = selectedCommand.split(" ");
@@ -1221,11 +1293,8 @@ Window_MagicCraftPalette.prototype.processOk = function(){
 }
 
 Window_MagicCraftPalette.prototype.refresh = function(){
-	let selCats = this._selectedCatalysts.filter(sc => sc != 0);
-	let selCmps = this._selectedComponents.filter(sc => sc != 0)
 	let craftableSkillList = [];
 	if (this._blueprintListWnd != null) {
-		this._blueprintListWnd.updateSelectedComponents(selCmps);
 		craftableSkillList = this._blueprintListWnd.getCraftList();
 	}
 
@@ -1357,30 +1426,9 @@ Window_MagicCraftComponentSelection.prototype.buildComList = function(){
 	}
 }
 
-/*Window_MagicCraftComponentSelection.prototype.getTreeSkills = function(currSchool, rtnSkills){
-	let schoolSkills = [];
-	if (Object.keys(currSchool.Trees).length > 0){
-		for(let key of Object.keys(currSchool.Trees)){
-			let currTree = currSchool.Trees[key];
-
-			if (currTree.Spells.length > 0){
-				schoolSkills = schoolSkills.concat(currTree.Spells);
-			}
-		}
-
-		for (let i1 = 0; i1 < schoolSkills.length; i1++){
-			if (!rtnSkills.includes(schoolSkills[i1])){
-				rtnSkills.push(schoolSkills[i1]);
-			}
-		}
-	}
-
-	return rtnSkills;
-}*/
-
 Window_MagicCraftComponentSelection.prototype.processCursorMove = function() {
 	if (this.isCursorMovable()) {
-		LMPGamesCore.functions.processCorsorMove(this);
+		LMPGamesCore.functions.processCursorMove(this);
 	}
 };
 
@@ -1395,8 +1443,8 @@ Window_MagicCraftComponentSelection.prototype.drawItem = function(index){
 
 Window_MagicCraftComponentSelection.prototype.select = function(index){
 	this._index = index;
-	if (this._comList.length > 0 && this._comList[this._pageIndex].length > 0){
-		if (index > -1 && index != this._comList[this._pageIndex].length && this._comList[this._pageIndex][index] != "Cancel"){
+	if (index > -1 && this._comList.length > 0 && this._comList[this._pageIndex].length > 0){
+		if (index != this._comList[this._pageIndex].length && this._comList[this._pageIndex][index] != "Cancel"){
 			this._selectedCmpId = this._cmpIdList[this._pageIndex][index];
 			if (this._infoWnd !== undefined){
 				this._infoWnd.setSelectedComponent(this._selectedCmpId);
@@ -1447,7 +1495,7 @@ Window_MagicCraftCatalystSelection.prototype.initialize = function(x, y, w, h, i
 	this._x = x;
 	this._y = y;
 	Window_Selectable.prototype.initialize.call(this, x, y, w, h);
-	
+
 	this._infoWnd = infoWnd;
 	this._helpWindow = helpWnd;
 	this._comList = [];
@@ -1497,11 +1545,11 @@ Window_MagicCraftCatalystSelection.prototype.buildComList = function(){
 	let selectedCatIds = Object.values(this._selectedCatalysts);
 
 	for (let itmId of selectedCatIds){
-		if (numOfSelectedCatalyts.hasOwnProperty(itmId)){
-			numOfSelectedCatalyts[itmId] += 1;
-		} else{
-			numOfSelectedCatalyts[itmId] = 1;
+		if (!numOfSelectedCatalyts.hasOwnProperty(itmId)){
+			numOfSelectedCatalyts[itmId] = 0;
 		}
+
+		numOfSelectedCatalyts[itmId] += 1;
 	}
 
 	let partyInvItems = $gameParty._items;
@@ -1592,14 +1640,13 @@ Window_MagicCraftCatalystSelection.prototype.drawItem = function(index){
 		this.contents.fontSize -= 1;
 	}
 
-	this.changePaintOpacity(this.bCanUse(this._comList[this._pageIndex][index]));
 	this.drawText(label, rect.x, y, w , 'center');
 }
 
 Window_MagicCraftCatalystSelection.prototype.select = function(index){
 	this._index = index;
-	if (this._comList.length > 0 && this._comList[this._pageIndex].length > 0){
-		if (index > -1 && index != this._comList[this._pageIndex].length && this._comList[this._pageIndex][index] != "Cancel"){
+	if (index > -1 && this._comList.length > 0 && this._comList[this._pageIndex].length > 0){
+		if (index != this._comList[this._pageIndex].length && this._comList[this._pageIndex][index] != "Cancel"){
 			this._selectedCatId = this._catIdList[this._pageIndex][index];
 			if (this._infoWnd !== undefined){
 				this._infoWnd.setSelectedCatalyst(this._selectedCatId);
@@ -1654,7 +1701,7 @@ Window_MagicCraftCatalystSelection.prototype.drawTextEx = function(text, x, y) {
 };
 
 
-/* Window_MagicCraftBlueprintList Functions*/ 
+/* Window_MagicCraftBlueprintList Functions*/
 Window_MagicCraftBlueprintList.prototype = Object.create(Window_Selectable.prototype);
 Window_MagicCraftBlueprintList.prototype.constructor = Window_MagicCraftBlueprintList;
 
@@ -1714,31 +1761,22 @@ Window_MagicCraftBlueprintList.prototype.drawItem = function(index){
 	let y = rect.y + (rect.height/2) - this.lineHeight() * 0.5;
 	let w = rect.width - this.textPadding();
 	let bCanCraft = false;
-	let itemCost = 0;
-	let goldCost = 0;
-	let currentGold = $gameParty.gold();
-	let currentPrtyItems = 0;
+	let bMeetsGoldCost = false;
+	let bMeetsItemCost = false;
 
 	if (index != -1 && this._comList[this._pageIndex][index] != 'Cancel') {
-		let currentSkillId = this._baseskillIdList[this._pageIndex][index];
-		this._costWnd.setSelectedBaseSpellId(currentSkillId);
+		let currentSkillId = this._baseSkillIdList[this._pageIndex][index];
+		this._costWnd.setSelectedSpellId(currentSkillId);
 		if (bEnableCurrencyCostSystem) {
-			goldCost = this._costWnd.getGoldCost();
+			bMeetsGoldCost = this._costWnd.meetsGoldCost();
 		}
 
 		if (bEnableItemCostSystem) {
-			let costItemId = this._costWnd.getCostItemId();
-			let itemData = $dataItems.find(itm => itm && itm.id == costItemId);
-			if (itemData) {
-				currentPrtyItems = $gameParty.numItems(itemData);
-				itemCost = this._costWnd.getItemCost();
-			} else {
-				//error handling
-			}
+			meetsItemCost = this._costWnd.meetsItemCost();
 		}
 
-		if ((!bEnableCurrencyCostSystem || (bEnableCurrencyCostSystem && goldCost <= currentGold)) &&
-			(!bEnableItemCostSystem || (bEnableItemCostSystem && itemCost <= currentPrtyItems)))
+		if ((!bEnableCurrencyCostSystem || (bEnableCurrencyCostSystem && bMeetsGoldCost)) &&
+			(!bEnableItemCostSystem || (bEnableItemCostSystem && bMeetsItemCost)))
 		{
 			bCanCraft = true;
 		}
@@ -1760,13 +1798,13 @@ Window_MagicCraftBlueprintList.prototype.buildComList = function(){
 
 	let pluginDataSkillIds = [];
 	for (let skill of pluginDataSkills) {
-		pluginDataSkillIds.push(skill.id);
+		pluginDataSkillIds.push(skill.Id);
 	}
 
 	let craftableSpells = $dataSkills.filter(skl => skl && pluginDataSkillIds.includes(skl.id));
 	let displaySpells = [];
 	let selectedCmpIds = Object.values(this._selectedComponents);
-	let selectedElements = selectedCmpIds.filter(sk => sk)
+	let selectedElements = selectedCmpIds.filter(sk => sk && sk != 0)
 		.reduce((obj, sk) => {
 			let selectedSpellData = $dataSkills.find(skl => skl && skl.id == sk);
 			if (selectedSpellData) {
@@ -1776,7 +1814,7 @@ Window_MagicCraftBlueprintList.prototype.buildComList = function(){
 		}, []);
 
 	for (let spell of craftableSpells) {
-		let spellPluginData = pluginDataSkills[spell.id];
+		let spellPluginData = LMPGamesCore.pluginData.magicCrafting.skillData[spell.id];
 		if (spellPluginData && spellPluginData.ComponentElements &&
 			spellPluginData.ComponentElements.length > 0) {
 			if (this.meetsComponentRequirements(spellPluginData.ComponentElements, selectedElements)) {
@@ -1791,7 +1829,7 @@ Window_MagicCraftBlueprintList.prototype.buildComList = function(){
 	}
 
 	for (let spell of displaySpells) {
-		let spellPluginData = pluginData.skillData[spell.id];
+		let spellPluginData = LMPGamesCore.pluginData.magicCrafting.skillData[spell.id];
 		let name = spell.name;
 		if (!spellPluginData.CraftingShowName) {
 			let newSkillName = "";
@@ -1887,30 +1925,25 @@ Window_MagicCraftBlueprintList.prototype.select = function(index){
 	let currentGold = $gameParty.gold();
 	let currentPrtyItems = 0;
 
-	if (this._comList.length > 0 && this._comList[this._pageIndex].length > 0) {
-		if (index > -1 && index != this._comList[this._pageIndex].length && this._comList[this._pageIndex][index] != "Cancel") {
+	if (index > -1 && this._comList.length > 0 && this._comList[this._pageIndex].length > 0) {
+		if (index != this._comList[this._pageIndex].length && this._comList[this._pageIndex][index] != "Cancel") {
 			this._selectedBaseId = this._baseSkillIdList[this._pageIndex][index];
 			if (this._infoWnd !== undefined) {
 				this._infoWnd.setSelectedBaseSpell(this._selectedBaseId);
 			}
 
 			if (this._costWnd !== undefined) {
-				this._costWnd.setSelectedBaseSpellId(this._selectedBaseId);
-				if (bEnableCurrencyCostSystem){
-					goldCost = this._costWnd.getGoldCost();
+				this._costWnd.setSelectedSpellId(this._selectedBaseId);
+				if (bEnableCurrencyCostSystem) {
+					bMeetsGoldCost = this._costWnd.meetsGoldCost();
 				}
 
-				if (bEnableItemCostSystem){
-					let costItemId = this._costWnd.getCostItemId();
-					let itemData = $dataItems.find(itm => itm && itm.id == costItemId);
-					if (itemData){
-						itemCost = this._costWnd.getItemCost();
-						currentPrtyItems = $gameParty.numItems(itemData);
-					}
+				if (bEnableItemCostSystem) {
+					meetsItemCost = this._costWnd.meetsItemCost();
 				}
 
-				if ((!bEnableCurrencyCostSystem || (bEnableCurrencyCostSystem && goldCost <= currentGold)) &&
-					(!bEnableItemCostSystem || (bEnableItemCostSystem && itemCost <= currentPrtyItems)))
+				if ((!bEnableCurrencyCostSystem || (bEnableCurrencyCostSystem && bMeetsGoldCost)) &&
+					(!bEnableItemCostSystem || (bEnableItemCostSystem && bMeetsItemCost)))
 				{
 					this._bCanCraft = true;
 				} else {
@@ -1920,6 +1953,8 @@ Window_MagicCraftBlueprintList.prototype.select = function(index){
 		} else {
 			if (this._infoWnd !== undefined) {
 				this._infoWnd.setSelectedBaseSpell(-1);
+				//TODO Cost window on Cancel
+				this._bCanCraft = false;
 			}
 		}
 
@@ -1933,9 +1968,8 @@ Window_MagicCraftBlueprintList.prototype.select = function(index){
 Window_MagicCraftBlueprintList.prototype.processOk = function(){
 	if (this._index > -1 && this._index < this._comList[this._pageIndex].length){
 		if (this._comList[this._pageIndex][this._index] !== "Cancel"){
-			this._selectedBaseId = this._baseSkillIdList[this._pageIndex][this._index];
-			this._infoWnd.setSelectedBaseSpell(this._selectedBaseId);
-			if ((bEnableCurrencyCostSystem || bEnableItemCostSystem) && this._bCanCraft){
+			//this._selectedBaseId = this._baseSkillIdList[this._pageIndex][this._index];
+			if (this._bCanCraft) {
 				Window_Selectable.prototype.processOk.apply(this);
 			} else {
 				SoundManager.playCancel();
@@ -2041,39 +2075,41 @@ Window_MagicCraftInfo.prototype.paletteInfo = function(){
 	fmt = JSON.parse(paletteTxFmt || '');
 	if (fmt) {
 		bEnableWordwrap = fmt.match(/<(?:WordWrap)>/i);
+		let componentNum = 0;
 		if (Object.keys(this._selectedComponents).length > 0) {
 			let componentIds = Object.values(this._selectedComponents);
 
 			for (let componentId of componentIds) {
 				if (componentId > 0) {
-					let componentSkillData = $dataSkills.filter(skl => skl && skl.id == componentId);
+					componentNum++;
+					let componentSkillData = $dataSkills.find(skl => skl && skl.id == componentId);
 					let componentSkillPluginData = LMPGamesCore.pluginData.magicCrafting.skillData
 						.find(skl => skl && skl.Id == componentId);
-					
+
 					if (componentSkillData && componentSkillPluginData) {
 						let halfWndW = this._width / 2;
 						this.contents.fontSize = 26;
 
-						let cmpTitle = "Component " + String(i1+1);
+						let cmpTitle = "Component " + String(componentNum);
 						let titleLen = this.contents.measureTextWidth(cmpTitle);
 						let titlePos = Math.floor(halfWndW - (titleLen/1.5));
 
 						titlePos = Math.floor((cmpTitle.length < 10 ? titlePos - (10 + (cmpTitle.length/2)) : titlePos + (cmpTitle.length/2)));
-						cmpTitle = addXShift(cmpTitle, titlePos);
-						cmpTitle = changeFontSize(cmpTitle, 26);
-						cmpTitle = addBreak(cmpTitle, 'end');
+						cmpTitle = LMPGamesCore.functions.addXShift(cmpTitle, titlePos);
+						cmpTitle = LMPGamesCore.functions.changeFontSize(cmpTitle, 26);
+						cmpTitle = LMPGamesCore.functions.addBreak(cmpTitle, 'end');
 
 						let cmpName = componentSkillData.name;
 						let nameLen = this.contents.measureTextWidth(cmpName);
 						let namePos = Math.floor(halfWndW - (nameLen/1.5));
 
 						namePos = Math.floor((cmpName.length < 10 ? namePos - (10 + (cmpName.length/2)) : namePos + (cmpName.length/2)));
-						cmpName = addXShift(cmpName, namePos);
-						cmpName = changeFontSize(cmpName, 26);
-						cmpName = addBreak(cmpName, 'end');
-						cmpName = addBreak(cmpName, 'end');
+						cmpName = LMPGamesCore.functions.addXShift(cmpName, namePos);
+						cmpName = LMPGamesCore.functions.changeFontSize(cmpName, 26);
+						cmpName = LMPGamesCore.functions.addBreak(cmpName, 'end');
+						cmpName = LMPGamesCore.functions.addBreak(cmpName, 'end');
 
-						let elementIcon = staticIconLst["11"][componentSkillData.damage.elementId];
+						let elementIcon = LMPGamesCore.settings.staticObjects.iconMappingObject["11"][componentSkillData.damage.elementId];
 						let element = $dataSystem.elements[componentSkillData.damage.elementId] || "Non-Elemental";
 						let damage = 0;
 
@@ -2081,11 +2117,11 @@ Window_MagicCraftInfo.prototype.paletteInfo = function(){
 						damage = Math.ceil((parseInt(baseDamage) * mgDmgRate));
 
 						let elementStr = "Element: " + elementIcon + ' ' + element;
-						elementStr = addBreak(elementStr, 'end');
+						elementStr = LMPGamesCore.functions.addBreak(elementStr, 'end');
 						let dmgStr = "Damage Added: " + damage;
-						dmgStr = addBreak(dmgStr, 'end');
-						dmgStr = addBreak(dmgStr, 'end');
-						dmgStr = addBreak(dmgStr, 'end');
+						dmgStr = LMPGamesCore.functions.addBreak(dmgStr, 'end');
+						dmgStr = LMPGamesCore.functions.addBreak(dmgStr, 'end');
+						dmgStr = LMPGamesCore.functions.addBreak(dmgStr, 'end');
 
 						cmpString += cmpTitle + cmpName + elementStr + dmgStr;
 					}
@@ -2093,11 +2129,13 @@ Window_MagicCraftInfo.prototype.paletteInfo = function(){
 			}
 		}
 
+		let catalystNum = 0;
 		if (Object.keys(this._selectedCatalysts).length > 0) {
 			bEnableWordwrap = fmt.match(/<(?:WordWrap)>/i);
 			let catalystIds = Object.values(this._selectedCatalysts);
 			for (let catalystId of catalystIds) {
 				if (catalystId > 0) {
+					catalystNum++;
 					let catalystItemData = $dataItems.find(itm => itm && itm.id == catalystId);
 					let catalystItemPluginData = LMPGamesCore.pluginData.magicCrafting.itemData
 						.find(itm => itm && itm.Id == catalystId);
@@ -2106,14 +2144,14 @@ Window_MagicCraftInfo.prototype.paletteInfo = function(){
 						let halfWndW = this._width / 2;
 						this.contents.fontSize = 26;
 
-						let catTitle = "Catalyst " + String(i1+1);
+						let catTitle = "Catalyst " + String(catalystNum);
 						let titleLen = this.contents.measureTextWidth(catTitle);
 						let titlePos = Math.floor(halfWndW - (titleLen/1.5));
 
 						titlePos = Math.floor((catTitle.length < 10 ? titlePos - (10 + (catTitle.length/2)) : titlePos + (catTitle.length/2)));
-						catTitle = addXShift(catTitle, titlePos);
-						catTitle = changeFontSize(catTitle, 26);
-						catTitle = addBreak(catTitle, 'end');
+						catTitle = LMPGamesCore.functions.addXShift(catTitle, titlePos);
+						catTitle = LMPGamesCore.functions.changeFontSize(catTitle, 26);
+						catTitle = LMPGamesCore.functions.addBreak(catTitle, 'end');
 
 						let catName = curCat.name;
 						let nameLen = this.contents.measureTextWidth(catName);
@@ -2121,13 +2159,13 @@ Window_MagicCraftInfo.prototype.paletteInfo = function(){
 						let header = "";
 
 						namePos = Math.floor((catName.length < 10 ? namePos - (10 + (catName.length/2)) : namePos + (catName.length/2)));
-						catName = addXShift(catName, namePos);
-						catName = changeFontSize(catName, 26);
-						catName = addBreak(catName, 'end');
-						catName = addBreak(catName, 'end');
+						catName = LMPGamesCore.functions.addXShift(catName, namePos);
+						catName = LMPGamesCore.functions.changeFontSize(catName, 26);
+						catName = LMPGamesCore.functions.addBreak(catName, 'end');
+						catName = LMPGamesCore.functions.addBreak(catName, 'end');
 
 						let effectString = this.generateCatEffectList(curCat);
-						effectString = addBreak(effectString, 'end');
+						effectString = LMPGamesCore.functions.addBreak(effectString, 'end');
 
 						catString += catTitle + catName + effectString;
 					}
@@ -2167,7 +2205,7 @@ Window_MagicCraftInfo.prototype.componentInfo = function(){
 		let componentSpellData = $dataSkills.find(sk => sk && sk.id == this._curComponent);
 		let componentSpellPluginData = LMPGamesCore.pluginData.magicCrafting.skillData
 			.find(skl => skl && skl.Id == this._curComponent);
-		
+
 		if (componentSpellData && componentSpellPluginData) {
 			let element = $dataSystem.elements[componentSpellData.damage.elementId] || "Non-Elemental";
 			let damage = 0;
@@ -2207,7 +2245,7 @@ Window_MagicCraftInfo.prototype.catalystInfo = function(){
 		bEnableWordwrap = fmt.match(/<(?:WordWrap)>/i);
 		let catalystItemData = $dataItems.find(itm=> itm && itm.id == this._curCatalyst);
 		let catalystItemPluginData = LMPGamesCore.pluginData.magicCrafting.itemData
-			.find(itm => itm && itm.Id == this._curCatalyst); 
+			.find(itm => itm && itm.Id == this._curCatalyst);
 
 		if (catalystItemData && catalystItemPluginData) {
 			name = curCat.name + "<br>";
@@ -2238,176 +2276,187 @@ Window_MagicCraftInfo.prototype.baseSpellInfo = function(){
 
 	fmt = JSON.parse(bpTxFmt || '');
 	if (fmt && this._curBaseSpellId > 0) {
-		let currSkill = $dataSkills.find(sk => sk && sk.id == this._curBaseSpellId);
+		let skillData = $dataSkills.find(sk => sk && sk.id == this._curBaseSpellId);
+		let skillPluginData = LMPGamesCore.pluginData.magicCrafting.skillData
+			.find(skl => skl && this._curBaseSpellId == skl.Id);
 		let miscSkInfo = "";
 		let invSkInfo = "";
 		let dmgSkInfo = "";
 		let effSkInfo = "";
 		let name = "";
 		let desc = "";
+		let bObfuscateText = false;
 
-		bEnableWordwrap = fmt.match(/<(?:WordWrap)>/i);
-
-
-		name = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(currSkill.name) : currSkill.name);
-		let halfWndW = this._width / 2;
-		this.contents.fontSize = 26;
-		let nameLen = this.contents.measureTextWidth(name);
-		let namePos = Math.floor(halfWndW - (nameLen/1.5));
-		let header = "";
-
-		namePos = Math.floor((name.length < 10 ? namePos - (10 + (name.length/2)) : namePos + (name.length/2)));
-		name = addXShift(name, namePos);
-		name = changeFontSize(name, 26);
-		name = addBreak(name, 'end');
-		name = addBreak(name, 'end');
-
-		if (currSkill.description.length > 0) {
-			desc = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(currSkill.description) : currSkill.description);
-			desc = changeFontSize(desc, 24);
-			desc = addBreak(desc, 'end');
-			desc = addBreak(desc, 'end');
-		}
-
-		//Misc Skl Info Section
-		let mgSchoolInfo = "Magic School: ";
-		let mgSchool = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData($dataSystem.elements[currSkill.damage.elementId]) : $dataSystem.elements[currSkill.damage.elementId]);
-		mgSchoolInfo += mgSchool;
-		mgSchoolInfo = addXShift(mgSchoolInfo, 5);
-		mgSchoolInfo = addBreak(mgSchoolInfo, 'end');
-
-		miscSkInfo += mgSchoolInfo;
-
-		if (currSkill.mpCost > 0) {
-			let mpCostInfo = "MP Cost: ";
-			let mpCost = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(String(currSkill.mpCost)) : String(currSkill.mpCost));
-			mpCostInfo += mpCost;
-			mpCostInfo = addXShift(mpCostInfo, 5);
-			mpCostInfo = addBreak(mpCostInfo, 'break');
-			miscSkInfo += mpCostInfo;
-
-		}
-
-		if (currSkill.tpCost > 0) {
-			let tpCostInfo = "TP Cost: ";
-			let tpCost = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(String(currSkill.tpCost)) : String(currSkill.tpCost));
-			tpCostInfo += tpCost;
-			tpCostInfo = addXShift(tpCostInfo, 5);
-			tpCostInfo = addBreak(tpCostInfo, 'end');
-			miscSkInfo += tpCostInfo;
-		}
-
-		if (currSkill.tpGain > 0) {
-			let tpGainInfo = "TP Gain: ";
-			let tpGain = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(String(currSkill.tpGain)) : String(currSkill.tpGain));
-			tpGainInfo += tpGain + " TP on use";
-			tpGainInfo = addXShift(tpGainInfo, 5);
-			tpGainInfo = addBreak(tpGainInfo, 'break');
-			miscSkInfo += tpGainInfo;
-		}
-
-		if (currSkill.scope > 0) {
-			let scopeInfo = "Scope: ";
-			let scope = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(scopeLst[currSkill.scope]) : scopeLst[currSkill.scope]);
-			scopeInfo += scope;
-			scopeInfo = addXShift(scopeInfo, 5);
-			scopeInfo = addBreak(scopeInfo, 'end');
-			miscSkInfo += scopeInfo;
-		}
-
-		let usableInfo = "Usable: ";
-		let usable = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(occLst[currSkill.occasion]) : occLst[currSkill.occasion]);
-		usableInfo += usable;
-		usableInfo = addXShift(usableInfo, 5);
-		usableInfo = addBreak(usableInfo, 'end');
-		usableInfo = addBreak(usableInfo, 'end');
-		miscSkInfo += usableInfo;
-
-		//Invocation Section Info
-		invSkInfo = "Invocation Details:";
-		invSkInfo = addXShift(invSkInfo, 5);
-		invSkInfo = addBreak(invSkInfo, 'end');
-
-		if (currSkill.delay > 0) {
-			let delayInfo = "Delay: ";
-			let delay = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(String(currSkill.speed)) : String(currSkill.speed));
-			delayInfo += delay;
-			delayInfo = addXShift(delayInfo, 25);
-			delayInfo = addBreak(delayInfo, 'end');
-			invSkInfo += delayInfo;
-		}
-
-		if (currSkill.success > 0) {
-			let useChanceInfo = "Use Chance: ";
-			let useChance = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(String(currSkill.success)) : String(currSkill.success));
-			useChanceInfo += useChance;
-			useChanceInfo = addXShift(useChanceInfo, 25);
-			useChanceInfo = addBreak(useChanceInfo, 'end');
-			invSkInfo += useChanceInfo;
-		}
-
-		if (currSkill.repeats > 1) {
-			let repeatInfo = "Repeats ";
-			let repeat = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(String(currSkill.repeats)) : String(currSkill.repeats));
-			repeatInfo += repeat + " Times";
-			repeatInfo = addXShift(repeatInfo, 25);
-			repeatInfo = addBreak(repeatInfo, 'end');
-			invSkInfo += repeatInfo;
-		}
-
-		let evasionInfo = "Evasion Type: ";
-		let evasion = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(hitTypLst[currSkill.hitType]) : hitTypLst[currSkill.hitType]);
-		evasionInfo += evasion;
-		evasionInfo = addXShift(evasionInfo, 25);
-		evasionInfo = addBreak(evasionInfo, 'end');
-		evasionInfo = addBreak(evasionInfo, 'end');
-		invSkInfo += evasionInfo;
-
-
-		//Damage Section Info
-		if (currSkill.damage.type != 0){
-			dmgSkInfo = "Damage Information:";
-			dmgSkInfo = addXShift(dmgSkInfo, 5);
-			dmgSkInfo = addBreak(dmgSkInfo, 'end');
-
-			let dmgTypeInfo = "Damage Type: ";
-			let dmgType = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(dmgTypLst[currSkill.damage.type]) : dmgTypLst[currSkill.damage.type]);
-			dmgTypeInfo += dmgType;
-			dmgTypeInfo = addXShift(dmgTypeInfo, 25);
-			dmgTypeInfo = addBreak(dmgTypeInfo, 'end');
-			dmgSkInfo += dmgTypeInfo;
-
-			if (currSkill.damage.elementId > 0) {
-				let dmgEleInfo = "Damage Element: ";
-				let dmgEle = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData($dataSystem.elements[currSkill.damage.elementId]) : $dataSystem.elements[currSkill.damage.elementId]);
-				dmgEleInfo += dmgEle;
-				dmgEleInfo = addXShift(dmgEleInfo, 25);
-				dmgEleInfo = addBreak(dmgEleInfo, 'end');
-				dmgSkInfo += dmgEleInfo;
+		if (skillData && skillPluginData) {
+			if (craftingDisplayMode == 1 && skillPluginData.Obfuscated) {
+				LMPGamesCore.functions.setObfuscationSettings(obfuscationChar, maxObfusChars, true);
+				bObfuscateText = true;
+			} else {
+				LMPGamesCore.functions.resetObfuscationSettings();
 			}
 
-			if (currSkill.damage.variance > 0) {
-				let dmgVarInfo = "Damage Variance: ";
-				let dmgVar = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(String(currSkill.damage.variance)) : String(currSkill.damage.variance));
-				dmgVarInfo += dmgVar + '%';
-				dmgVarInfo = addXShift(dmgVarInfo, 25);
-				dmgVarInfo = addBreak(dmgVarInfo, 'end');
-				dmgSkInfo += dmgVarInfo;
+			bEnableWordwrap = fmt.match(/<(?:WordWrap)>/i);
+
+
+			name = (bObfuscateText ? LMPGamesCore.functions.obfuscateText(skillData.name) : skillData.name);
+			let halfWndW = this._width / 2;
+			this.contents.fontSize = 26;
+			let nameLen = this.contents.measureTextWidth(name);
+			let namePos = Math.floor(halfWndW - (nameLen/1.5));
+
+			namePos = Math.floor((name.length < 10 ? namePos - (10 + (name.length/2)) : namePos + (name.length/2)));
+			name = LMPGamesCore.functions.addXShift(name, namePos);
+			name = LMPGamesCore.functions.changeFontSize(name, 26);
+			name = LMPGamesCore.functions.addBreak(name, 'end');
+			name = LMPGamesCore.functions.addBreak(name, 'end');
+
+			if (skillData.description.length > 0) {
+				desc = (bObfuscateText ? LMPGamesCore.functions.obfuscateText(skillData.description) : skillData.description);
+				desc = LMPGamesCore.functions.changeFontSize(desc, 24);
+				desc = LMPGamesCore.functions.addBreak(desc, 'end');
+				desc = LMPGamesCore.functions.addBreak(desc, 'end');
 			}
 
-			if (currSkill.damage.critical) {
-				let canCritInfo = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData("Can Critical") : "Can Critical");
-				canCritInfo = addXShift(canCritInfo, 25);
-				canCritInfo = addBreak(canCritInfo, 'end');
-				dmgSkInfo += canCritInfo;
+			//Misc Skl Info Section
+			let mgSchoolInfo = "Magic School: ";
+			let mgSchool = (bObfuscateText ? LMPGamesCore.functions.obfuscateText($dataSystem.elements[skillData.damage.elementId]) : $dataSystem.elements[skillData.damage.elementId]);
+			mgSchoolInfo += mgSchool;
+			mgSchoolInfo = LMPGamesCore.functions.addXShift(mgSchoolInfo, 5);
+			mgSchoolInfo = LMPGamesCore.functions.addBreak(mgSchoolInfo, 'end');
+
+			miscSkInfo += mgSchoolInfo;
+
+			if (skillData.mpCost > 0) {
+				let mpCostInfo = "MP Cost: ";
+				let mpCost = (bObfuscateText ? LMPGamesCore.functions.obfuscateText(String(skillData.mpCost)) : String(skillData.mpCost));
+				mpCostInfo += mpCost;
+				mpCostInfo = LMPGamesCore.functions.addXShift(mpCostInfo, 5);
+				mpCostInfo = LMPGamesCore.functions.addBreak(mpCostInfo, 'break');
+				miscSkInfo += mpCostInfo;
+
 			}
 
-			dmgSkInfo = addBreak(dmgSkInfo, 'end');
-		}
+			if (skillData.tpCost > 0) {
+				let tpCostInfo = "TP Cost: ";
+				let tpCost = (bObfuscateText ? LMPGamesCore.functions.obfuscateText(String(skillData.tpCost)) : String(skillData.tpCost));
+				tpCostInfo += tpCost;
+				tpCostInfo = LMPGamesCore.functions.addXShift(tpCostInfo, 5);
+				tpCostInfo = LMPGamesCore.functions.addBreak(tpCostInfo, 'end');
+				miscSkInfo += tpCostInfo;
+			}
 
-		if (!hasNoEffects(currSkill.effects)){
-			let processedEffects = LMPGamesCore.functions.buildEffectList(currSkill.effects);
-			effSkInfo = LMPGamesCore.functions.generateEffectStr(processedEffects, currSkill.Obfuscated);
+			if (skillData.tpGain > 0) {
+				let tpGainInfo = "TP Gain: ";
+				let tpGain = (bObfuscateText ? LMPGamesCore.functions.obfuscateText(String(skillData.tpGain)) : String(skillData.tpGain));
+				tpGainInfo += tpGain + " TP on use";
+				tpGainInfo = LMPGamesCore.functions.addXShift(tpGainInfo, 5);
+				tpGainInfo = LMPGamesCore.functions.addBreak(tpGainInfo, 'break');
+				miscSkInfo += tpGainInfo;
+			}
+
+			if (skillData.scope > 0) {
+				let scopeInfo = "Scope: ";
+				let scope = (bObfuscateText ? LMPGamesCore.functions.obfuscateText(LMPGamesCore.settings.staticLists.skillScopeList[skillData.scope]) : LMPGamesCore.settings.staticLists.skillScopeList[skillData.scope]);
+				scopeInfo += scope;
+				scopeInfo = LMPGamesCore.functions.addXShift(scopeInfo, 5);
+				scopeInfo = LMPGamesCore.functions.addBreak(scopeInfo, 'end');
+				miscSkInfo += scopeInfo;
+			}
+
+			let usableInfo = "Usable: ";
+			let usable = (bObfuscateText ? LMPGamesCore.functions.obfuscateText(LMPGamesCore.settings.staticLists.occList[skillData.occasion]) : LMPGamesCore.settings.staticLists.occList[skillData.occasion]);
+			usableInfo += usable;
+			usableInfo = LMPGamesCore.functions.addXShift(usableInfo, 5);
+			usableInfo = LMPGamesCore.functions.addBreak(usableInfo, 'end');
+			usableInfo = LMPGamesCore.functions.addBreak(usableInfo, 'end');
+			miscSkInfo += usableInfo;
+
+			//Invocation Section Info
+			invSkInfo = "Invocation Details:";
+			invSkInfo = LMPGamesCore.functions.addXShift(invSkInfo, 5);
+			invSkInfo = LMPGamesCore.functions.addBreak(invSkInfo, 'end');
+
+			if (skillData.delay > 0) {
+				let delayInfo = "Delay: ";
+				let delay = (bObfuscateText ? LMPGamesCore.functions.obfuscateText(String(skillData.speed)) : String(skillData.speed));
+				delayInfo += delay;
+				delayInfo = LMPGamesCore.functions.addXShift(delayInfo, 25);
+				delayInfo = LMPGamesCore.functions.addBreak(delayInfo, 'end');
+				invSkInfo += delayInfo;
+			}
+
+			if (skillData.success > 0) {
+				let useChanceInfo = "Use Chance: ";
+				let useChance = (bObfuscateText ? LMPGamesCore.functions.obfuscateText(String(skillData.success)) : String(skillData.success));
+				useChanceInfo += useChance;
+				useChanceInfo = LMPGamesCore.functions.addXShift(useChanceInfo, 25);
+				useChanceInfo = LMPGamesCore.functions.addBreak(useChanceInfo, 'end');
+				invSkInfo += useChanceInfo;
+			}
+
+			if (skillData.repeats > 1) {
+				let repeatInfo = "Repeats ";
+				let repeat = (bObfuscateText ? LMPGamesCore.functions.obfuscateText(String(skillData.repeats)) : String(skillData.repeats));
+				repeatInfo += repeat + " Times";
+				repeatInfo = LMPGamesCore.functions.addXShift(repeatInfo, 25);
+				repeatInfo = LMPGamesCore.functions.addBreak(repeatInfo, 'end');
+				invSkInfo += repeatInfo;
+			}
+
+			let evasionInfo = "Evasion Type: ";
+			let evasion = (bObfuscateText ? LMPGamesCore.functions.obfuscateText(LMPGamesCore.settings.staticLists.hitTypeList[skillData.hitType]) : LMPGamesCore.settings.staticLists.hitTypeList[skillData.hitType]);
+			evasionInfo += evasion;
+			evasionInfo = LMPGamesCore.functions.addXShift(evasionInfo, 25);
+			evasionInfo = LMPGamesCore.functions.addBreak(evasionInfo, 'end');
+			evasionInfo = LMPGamesCore.functions.addBreak(evasionInfo, 'end');
+			invSkInfo += evasionInfo;
+
+
+			//Damage Section Info
+			if (skillData.damage.type != 0){
+				dmgSkInfo = "Damage Information:";
+				dmgSkInfo = LMPGamesCore.functions.addXShift(dmgSkInfo, 5);
+				dmgSkInfo = LMPGamesCore.functions.addBreak(dmgSkInfo, 'end');
+
+				let dmgTypeInfo = "Damage Type: ";
+				let dmgType = (bObfuscateText ? LMPGamesCore.functions.obfuscateText(LMPGamesCore.settings.staticLists.damageTypeList[skillData.damage.type]) : LMPGamesCore.settings.staticLists.damageTypeList[skillData.damage.type]);
+				dmgTypeInfo += dmgType;
+				dmgTypeInfo = LMPGamesCore.functions.addXShift(dmgTypeInfo, 25);
+				dmgTypeInfo = LMPGamesCore.functions.addBreak(dmgTypeInfo, 'end');
+				dmgSkInfo += dmgTypeInfo;
+
+				if (skillData.damage.elementId > 0) {
+					let dmgEleInfo = "Damage Element: ";
+					let dmgEle = (bObfuscateText ? LMPGamesCore.functions.obfuscateText($dataSystem.elements[skillData.damage.elementId]) : $dataSystem.elements[skillData.damage.elementId]);
+					dmgEleInfo += dmgEle;
+					dmgEleInfo = LMPGamesCore.functions.addXShift(dmgEleInfo, 25);
+					dmgEleInfo = LMPGamesCore.functions.addBreak(dmgEleInfo, 'end');
+					dmgSkInfo += dmgEleInfo;
+				}
+
+				if (skillData.damage.variance > 0) {
+					let dmgVarInfo = "Damage Variance: ";
+					let dmgVar = (bObfuscateText ? LMPGamesCore.functions.obfuscateText(String(skillData.damage.variance)) : String(skillData.damage.variance));
+					dmgVarInfo += dmgVar + '%';
+					dmgVarInfo = LMPGamesCore.functions.addXShift(dmgVarInfo, 25);
+					dmgVarInfo = LMPGamesCore.functions.addBreak(dmgVarInfo, 'end');
+					dmgSkInfo += dmgVarInfo;
+				}
+
+				if (skillData.damage.critical) {
+					let canCritInfo = (bObfuscateText ? LMPGamesCore.functions.obfuscateText("Can Critical") : "Can Critical");
+					canCritInfo = LMPGamesCore.functions.addXShift(canCritInfo, 25);
+					canCritInfo = LMPGamesCore.functions.addBreak(canCritInfo, 'end');
+					dmgSkInfo += canCritInfo;
+				}
+
+				dmgSkInfo = LMPGamesCore.functions.addBreak(dmgSkInfo, 'end');
+			}
+
+			if (LMPGamesCore.functions.hasEffects(skillData.effects)){
+				let processedEffects = LMPGamesCore.functions.buildEffectList(skillData.effects);
+				effSkInfo = LMPGamesCore.functions.generateEffectStr(processedEffects, skillPluginData.Obfuscated);
+			}
 		}
 
 		totalText = totalText.concat(name, desc, miscSkInfo, invSkInfo, dmgSkInfo, effSkInfo, "", "");
@@ -2436,167 +2485,167 @@ Window_MagicCraftInfo.prototype.finalSpellInfo = function(){
 		let name = "";
 		let desc = "";
 		let skillData = $dataSkills.find(sk => sk && sk.id == this._curBaseSpellId);
-		let currSkill = JSON.parse(JSON.stringify(skillData));
+		let skillPluginData = LMPGamesCore.pluginData.magicCrafting.skillData[this._curBaseSpellId];
 		let miscSkInfo = "";
 		let invSkInfo = "";
 		let dmgSkInfo = "";
 		let effSkInfo = "";
 
 		bEnableWordwrap = fmt.match(/<(?:WordWrap)>/i);
-
-		name = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(currSkill.name) : currSkill.name);
+		name = skillData.name;
 		let halfWndW = this._width / 2;
 		this.contents.fontSize = 26;
 		let nameLen = this.contents.measureTextWidth(name);
 		let namePos = Math.floor(halfWndW - (nameLen/1.5));
-		let header = "";
 
+		//TODO: Check this out, see if MTW uses drawTextEx before calcing width.  If so, can move this above
 		namePos = Math.floor((name.length < 10 ? namePos - (10 + (name.length/2)) : namePos + (name.length/2)));
-		name = addXShift(name, namePos);
-		name = changeFontSize(name, 26);
-		name = addBreak(name, 'end');
-		name = addBreak(name, 'end');
+		name = LMPGamesCore.functions.skillNameBuilder(skillData, skillPluginData.Alias, this._width, this.contents);
+		name = LMPGamesCore.functions.addXShift(name, namePos);
+		name = LMPGamesCore.functions.changeFontSize(name, 26);
+		name = LMPGamesCore.functions.addBreak(name, 'end');
+		name = LMPGamesCore.functions.addBreak(name, 'end');
 
-		if (currSkill.description.length > 0) {
-			desc = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(currSkill.description) : currSkill.description);
-			desc = changeFontSize(desc, 24);
-			desc = addBreak(desc, 'end');
-			desc = addBreak(desc, 'end');
+		if (skillData.description.length > 0) {
+			desc = skillData.description;
+			desc = LMPGamesCore.functions.changeFontSize(desc, 24);
+			desc = LMPGamesCore.functions.addBreak(desc, 'end');
+			desc = LMPGamesCore.functions.addBreak(desc, 'end');
 		}
 
 		//Misc Skl Info Section
 		let mgSchoolInfo = "Magic School: ";
-		let mgSchool = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData($dataSystem.elements[currSkill.damage.elementId]) : $dataSystem.elements[currSkill.damage.elementId]);
+		let mgSchool = $dataSystem.elements[skillData.damage.elementId];
 		mgSchoolInfo += mgSchool;
-		mgSchoolInfo = addXShift(mgSchoolInfo, 5);
-		mgSchoolInfo = addBreak(mgSchoolInfo, 'end');
+		mgSchoolInfo = LMPGamesCore.functions.addXShift(mgSchoolInfo, 5);
+		mgSchoolInfo = LMPGamesCore.functions.addBreak(mgSchoolInfo, 'end');
 
 		miscSkInfo += mgSchoolInfo;
 
-		if (currSkill.mpCost > 0) {
+		if (skillData.mpCost > 0) {
 			let mpCostInfo = "MP Cost: ";
-			let mpCost = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(String(currSkill.mpCost)) : String(currSkill.mpCost));
+			let mpCost = String(skillData.mpCost);
 			mpCostInfo += mpCost;
-			mpCostInfo = addXShift(mpCostInfo, 5);
-			mpCostInfo = addBreak(mpCostInfo, 'break');
+			mpCostInfo = LMPGamesCore.functions.addXShift(mpCostInfo, 5);
+			mpCostInfo = LMPGamesCore.functions.addBreak(mpCostInfo, 'break');
 			miscSkInfo += mpCostInfo;
 
 		}
 
-		if (currSkill.tpCost > 0) {
+		if (skillData.tpCost > 0) {
 			let tpCostInfo = "TP Cost: ";
-			let tpCost = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(String(currSkill.tpCost)) : String(currSkill.tpCost));
+			let tpCost = String(skillData.tpCost);
 			tpCostInfo += tpCost;
-			tpCostInfo = addXShift(tpCostInfo, 5);
-			tpCostInfo = addBreak(tpCostInfo, 'end');
+			tpCostInfo = LMPGamesCore.functions.addXShift(tpCostInfo, 5);
+			tpCostInfo = LMPGamesCore.functions.addBreak(tpCostInfo, 'end');
 			miscSkInfo += tpCostInfo;
 		}
 
-		if (currSkill.tpGain > 0) {
+		if (skillData.tpGain > 0) {
 			let tpGainInfo = "TP Gain: ";
-			let tpGain = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(String(currSkill.tpGain)) : String(currSkill.tpGain));
+			let tpGain = String(skillData.tpGain);
 			tpGainInfo += tpGain + " TP on use";
-			tpGainInfo = addXShift(tpGainInfo, 5);
-			tpGainInfo = addBreak(tpGainInfo, 'break');
+			tpGainInfo = LMPGamesCore.functions.addXShift(tpGainInfo, 5);
+			tpGainInfo = LMPGamesCore.functions.addBreak(tpGainInfo, 'break');
 			miscSkInfo += tpGainInfo;
 		}
 
-		if (currSkill.scope > 0) {
+		if (skillData.scope > 0) {
 			let scopeInfo = "Scope: ";
-			let scope = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(scopeLst[currSkill.scope]) : scopeLst[currSkill.scope]);
+			let scope = LMPGamesCore.settings.staticLists.skillScopeList[skillData.scope];
 			scopeInfo += scope;
-			scopeInfo = addXShift(scopeInfo, 5);
-			scopeInfo = addBreak(scopeInfo, 'end');
+			scopeInfo = LMPGamesCore.functions.addXShift(scopeInfo, 5);
+			scopeInfo = LMPGamesCore.functions.addBreak(scopeInfo, 'end');
 			miscSkInfo += scopeInfo;
 		}
 
 		let usableInfo = "Usable: ";
-		let usable = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(occLst[currSkill.occasion]) : occLst[currSkill.occasion]);
+		let usable = LMPGamesCore.settings.staticLists.occList[skillData.occasion];
 		usableInfo += usable;
-		usableInfo = addXShift(usableInfo, 5);
-		usableInfo = addBreak(usableInfo, 'end');
-		usableInfo = addBreak(usableInfo, 'end');
+		usableInfo = LMPGamesCore.functions.addXShift(usableInfo, 5);
+		usableInfo = LMPGamesCore.functions.addBreak(usableInfo, 'end');
+		usableInfo = LMPGamesCore.functions.addBreak(usableInfo, 'end');
 		miscSkInfo += usableInfo;
 
 		//Invocation Section Info
 		invSkInfo = "Invocation Details:";
-		invSkInfo = addXShift(invSkInfo, 5);
-		invSkInfo = addBreak(invSkInfo, 'end');
+		invSkInfo = LMPGamesCore.functions.addXShift(invSkInfo, 5);
+		invSkInfo = LMPGamesCore.functions.addBreak(invSkInfo, 'end');
 
-		if (currSkill.delay > 0) {
+		if (skillData.delay > 0) {
 			let delayInfo = "Delay: ";
-			let delay = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(String(currSkill.speed)) : String(currSkill.speed));
+			let delay = String(skillData.speed);
 			delayInfo += delay;
-			delayInfo = addXShift(delayInfo, 25);
-			delayInfo = addBreak(delayInfo, 'end');
+			delayInfo = LMPGamesCore.functions.addXShift(delayInfo, 25);
+			delayInfo = LMPGamesCore.functions.addBreak(delayInfo, 'end');
 			invSkInfo += delayInfo;
 		}
 
-		if (currSkill.success > 0) {
+		if (skillData.success > 0) {
 			let useChanceInfo = "Use Chance: ";
-			let useChance = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(String(currSkill.success)) : String(currSkill.success));
+			let useChance = String(skillData.success);
 			useChanceInfo += useChance;
-			useChanceInfo = addXShift(useChanceInfo, 25);
-			useChanceInfo = addBreak(useChanceInfo, 'end');
+			useChanceInfo = LMPGamesCore.functions.addXShift(useChanceInfo, 25);
+			useChanceInfo = LMPGamesCore.functions.addBreak(useChanceInfo, 'end');
 			invSkInfo += useChanceInfo;
 		}
 
-		if (currSkill.repeats > 1) {
+		if (skillData.repeats > 1) {
 			let repeatInfo = "Repeats ";
-			let repeat = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(String(currSkill.repeats)) : String(currSkill.repeats));
+			let repeat = (bObfuscateText ? LMPGamesCore.functions.obfuscateText(String(skillData.repeats)) : String(skillData.repeats));
 			repeatInfo += repeat + " Times";
-			repeatInfo = addXShift(repeatInfo, 25);
-			repeatInfo = addBreak(repeatInfo, 'end');
+			repeatInfo = LMPGamesCore.functions.addXShift(repeatInfo, 25);
+			repeatInfo = LMPGamesCore.functions.addBreak(repeatInfo, 'end');
 			invSkInfo += repeatInfo;
 		}
 
 		let evasionInfo = "Evasion Type: ";
-		let evasion = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(hitTypLst[currSkill.hitType]) : hitTypLst[currSkill.hitType]);
+		let evasion = LMPGamesCore.settings.staticLists.hitTypeList[skillData.hitType];
 		evasionInfo += evasion;
-		evasionInfo = addXShift(evasionInfo, 25);
-		evasionInfo = addBreak(evasionInfo, 'end');
-		evasionInfo = addBreak(evasionInfo, 'end');
+		evasionInfo = LMPGamesCore.functions.addXShift(evasionInfo, 25);
+		evasionInfo = LMPGamesCore.functions.addBreak(evasionInfo, 'end');
+		evasionInfo = LMPGamesCore.functions.addBreak(evasionInfo, 'end');
 		invSkInfo += evasionInfo;
 
 		//Damage Section Info
-		if (currSkill.damage.type != 0){
+		if (skillData.damage.type != 0){
 			dmgSkInfo = "Damage Information:";
-			dmgSkInfo = addXShift(dmgSkInfo, 5);
-			dmgSkInfo = addBreak(dmgSkInfo, 'end');
+			dmgSkInfo = LMPGamesCore.functions.addXShift(dmgSkInfo, 5);
+			dmgSkInfo = LMPGamesCore.functions.addBreak(dmgSkInfo, 'end');
 
 			let dmgTypeInfo = "Damage Type: ";
-			let dmgType = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(dmgTypLst[currSkill.damage.type]) : dmgTypLst[currSkill.damage.type]);
+			let dmgType = LMPGamesCore.settings.staticLists.damageTypeList[skillData.damage.type];
 			dmgTypeInfo += dmgType;
-			dmgTypeInfo = addXShift(dmgTypeInfo, 25);
-			dmgTypeInfo = addBreak(dmgTypeInfo, 'end');
+			dmgTypeInfo = LMPGamesCore.functions.addXShift(dmgTypeInfo, 25);
+			dmgTypeInfo = LMPGamesCore.functions.addBreak(dmgTypeInfo, 'end');
 			dmgSkInfo += dmgTypeInfo;
 
-			if (currSkill.damage.elementId > 0) {
+			if (skillData.damage.elementId > 0) {
 				let dmgEleInfo = "Damage Element: ";
-				let dmgEle = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData($dataSystem.elements[currSkill.damage.elementId]) : $dataSystem.elements[currSkill.damage.elementId]);
+				let dmgEle = $dataSystem.elements[skillData.damage.elementId];
 				dmgEleInfo += dmgEle;
-				dmgEleInfo = addXShift(dmgEleInfo, 25);
-				dmgEleInfo = addBreak(dmgEleInfo, 'end');
+				dmgEleInfo = LMPGamesCore.functions.addXShift(dmgEleInfo, 25);
+				dmgEleInfo = LMPGamesCore.functions.addBreak(dmgEleInfo, 'end');
 				dmgSkInfo += dmgEleInfo;
 			}
 
-			if (currSkill.damage.variance > 0) {
+			if (skillData.damage.variance > 0) {
 				let dmgVarInfo = "Damage Variance: ";
-				let dmgVar = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData(String(currSkill.damage.variance)) : String(currSkill.damage.variance));
+				let dmgVar = String(skillData.damage.variance);
 				dmgVarInfo += dmgVar + '%';
-				dmgVarInfo = addXShift(dmgVarInfo, 25);
-				dmgVarInfo = addBreak(dmgVarInfo, 'end');
+				dmgVarInfo = LMPGamesCore.functions.addXShift(dmgVarInfo, 25);
+				dmgVarInfo = LMPGamesCore.functions.addBreak(dmgVarInfo, 'end');
 				dmgSkInfo += dmgVarInfo;
 			}
 
-			if (currSkill.damage.critical) {
-				let canCritInfo = (craftingDisplayMode == 1 && currSkill.Obfuscated ? obfuscateData("Can Critical") : "Can Critical");
-				canCritInfo = addXShift(canCritInfo, 25);
-				canCritInfo = addBreak(canCritInfo, 'end');
+			if (skillData.damage.critical) {
+				let canCritInfo = "Can Critical";
+				canCritInfo = LMPGamesCore.functions.addXShift(canCritInfo, 25);
+				canCritInfo = LMPGamesCore.functions.addBreak(canCritInfo, 'end');
 				dmgSkInfo += canCritInfo;
 			}
 
-			dmgSkInfo = addBreak(dmgSkInfo, 'end');
+			dmgSkInfo = LMPGamesCore.functions.addBreak(dmgSkInfo, 'end');
 		}
 
 		totalText = totalText.concat(name, desc, miscSkInfo, invSkInfo, dmgSkInfo, effSkInfo, "", "");
@@ -2619,8 +2668,8 @@ Window_MagicCraftInfo.prototype.generateEffectStr = function(effects, obfuscated
 		effectStr = obfuscateData(effectStr);
 	}
 
-	effectStr = addXShift(effectStr, 5);
-	effectStr = addBreak(effectStr, 'end');
+	effectStr = LMPGamesCore.functions.addXShift(effectStr, 5);
+	effectStr = LMPGamesCore.functions.addBreak(effectStr, 'end');
 
 	effStates = effects.states;
 	effBuffs = effects.buffs;
@@ -2675,8 +2724,8 @@ Window_MagicCraftInfo.prototype.generateEffectStr = function(effects, obfuscated
 			effectRecovStr = obfuscateData(effectRecovStr);
 		}
 
-		effectRecovStr = addXShift(effectRecovStr, 25);
-		effectRecovStr = addBreak(effectRecovStr, 'end');
+		effectRecovStr = LMPGamesCore.functions.addXShift(effectRecovStr, 25);
+		effectRecovStr = LMPGamesCore.functions.addBreak(effectRecovStr, 'end');
 
 		if (effHPRecov.length > 0){
 			let effectHPRecovStr = this.buildDataList("HP:", effHPRecov, 35, 45, 0, obfuscated);
@@ -2712,8 +2761,8 @@ Window_MagicCraftInfo.prototype.buildDataList = function(dataTitle, data, titleX
 			dataTitle = obfuscateData(dataTitle);
 		}
 
-		dataTitle = addXShift(dataTitle, titleXShift);
-		dataTitle = addBreak(dataTitle, 'end');
+		dataTitle = LMPGamesCore.functions.addXShift(dataTitle, titleXShift);
+		dataTitle = LMPGamesCore.functions.addBreak(dataTitle, 'end');
 	}
 
 	let dataStr = "";
@@ -2725,18 +2774,18 @@ Window_MagicCraftInfo.prototype.buildDataList = function(dataTitle, data, titleX
 			newData += data[i1];
 		}
 
-		newData = addXShift(newData, dataXShift);
+		newData = LMPGamesCore.functions.addXShift(newData, dataXShift);
 		/*if (dataYShift > 0){
 			newData = addYShift(newData, dataYShift);
 		}*/
 
-		newData = addBreak(newData, 'end');
+		newData = LMPGamesCore.functions.addBreak(newData, 'end');
 
 		dataStr += newData;
 	}
 
 	if (dataTitle.length > 0) {
-		dataStr = addBreak(dataStr, 'end');
+		dataStr = LMPGamesCore.functions.addBreak(dataStr, 'end');
 	}
 
 	builtStr = (dataTitle.length > 0 ? dataTitle : "");
@@ -2767,8 +2816,8 @@ Window_MagicCraftInfo.prototype.refresh = function() {
 Window_MagicCraftInfo.prototype.generateCatEffectList = function(catData){
 	let craftEffects = catData.CraftingEffects;
 	let effectString = "Effects:";
-	effectString = addXShift(effectString, 5);
-	effectString = addBreak(effectString, 'end');
+	effectString = LMPGamesCore.functions.addXShift(effectString, 5);
+	effectString = LMPGamesCore.functions.addBreak(effectString, 'end');
 
 	if (craftEffects.length > 0){
 		for (let i1 = 0; i1 < craftEffects.length; i1++){
@@ -2794,8 +2843,8 @@ Window_MagicCraftInfo.prototype.generateCatEffectList = function(catData){
 					break;
 			}
 
-			curEffStr = addXShift(curEffStr, 25);
-			curEffStr = addBreak(curEffStr, 'end');
+			curEffStr = LMPGamesCore.functions.addXShift(curEffStr, 25);
+			curEffStr = LMPGamesCore.functions.addBreak(curEffStr, 'end');
 			effectString += curEffStr;
 		}
 	}
@@ -2806,85 +2855,51 @@ Window_MagicCraftInfo.prototype.generateCatEffectList = function(catData){
 }
 
 Window_MagicCraftInfo.prototype.contentsHeight = function() {
-var standard = this.height - this.standardPadding() * 2;
-return Math.max(standard, this._allTextHeight);
+	return LMPGamesCore.functions.contentsHeight(this);
 };
 
 Window_MagicCraftInfo.prototype.updateCountdown = function() {
-if (this._countdown > 0) {
-	this._countdown -= 1;
-	if (this._countdown <= 0) this.refresh();
-}
+	LMPGamesCore.functions.updateCountdown(this);
 };
 
 Window_MagicCraftInfo.prototype.scrollSpeed = function() {
-if (this._scrollSpeed === undefined) {
-	this._scrollSpeed = 5;
-}
-return this._scrollSpeed;
+	return LMPGamesCore.funcitons.scrollSpeel(this)
 };
 
 Window_MagicCraftInfo.prototype.scrollOriginDown = function(speed) {
-var value = this.contentsHeight() - this.height +
-	this.standardPadding() * 2;
-this.origin.y = Math.min(value, this.origin.y + speed);
+	LMPGamesCore.functions.scrollOriginDown(speed);
 };
 
 Window_MagicCraftInfo.prototype.scrollOriginUp = function(speed) {
-this.origin.y = Math.max(0, this.origin.y - speed);
+	LMPCamesCore.functions.scollOriginUp(speed);
 };
 
 Window_MagicCraftInfo.prototype.update = function() {
-Window_Selectable.prototype.update.call(this);
-this.updateCountdown();
-if (this.isOpenAndActive()) this.updateKeyScrolling();
+	LMPGamesCore.functions.update(this);
 };
 
 Window_MagicCraftInfo.prototype.updateKeyScrolling = function() {
-if (Input.isPressed('up')) {
-	this.scrollOriginUp(this.scrollSpeed());
-} else if (Input.isPressed('down')) {
-	this.scrollOriginDown(this.scrollSpeed());
-} else if (Input.isPressed('pageup')) {
-	this.scrollOriginUp(this.scrollSpeed() * 4);
-} else if (Input.isPressed('pagedown')) {
-	this.scrollOriginDown(this.scrollSpeed() * 4);
-}
+	LMPGamesCore.functions.updateKeyScrolling(this);
 };
 
 Window_MagicCraftInfo.prototype.updateArrows = function() {
-if (this._lastOriginY === this.origin.y) return;
-this.showArrows();
+	LMPGamesCore.functions.updateArrows(this);
 };
 
 Window_MagicCraftInfo.prototype.showArrows = function() {
-this._lastOriginY = this.origin.y;
-this.upArrowVisible = this.origin.y !== 0;
-this.downArrowVisible = this.origin.y !== this.contentsHeight() -
-	this.height + this.standardPadding() * 2;
+	LMPGamesCore.functions.showArrows(this);
 };
 
 Window_MagicCraftInfo.prototype.hideArrows = function() {
-this.upArrowVisible = false;
-this.downArrowVisible = false;
+	LMPGamesCore.functions.hideArrows(this);
 };
 
 Window_MagicCraftInfo.prototype.isInsideFrame = function() {
-var x = this.canvasToLocalX(TouchInput._mouseOverX);
-var y = this.canvasToLocalY(TouchInput._mouseOverY);
-return x >= 0 && y >= 0 && x < this._width && y < this._height;
+	LMPGamesCore.functions.isInsideFrame(this);
 };
 
 Window_MagicCraftInfo.prototype.processWheel = function() {
-if (!this.isInsideFrame()) { return; }
-var threshold = 20;
-if (TouchInput.wheelY >= threshold) {
-	this.scrollOriginDown(this.scrollSpeed() * 4);
-}
-
-if (TouchInput.wheelY <= -threshold) {
-	this.scrollOriginUp(this.scrollSpeed() * 4);
-}
+	LMPGamesCore.functions.processWheel(this);
 };
 
 
@@ -2898,29 +2913,47 @@ Window_MagicCraftCost.prototype.initialize = function(x, y, width, height){
 	this._yPos = y;
 	Window_Selectable.prototype.initialize.call(this, x, y, width, height);
 
-	this._selectedComponents = {};
-	this._selectedCatalysts = {};
+	this._selectedComponentIds = [];
+	this._selectedCatalystIds = [];
+	this._costItems = {};
 	this._allTextHeight = 0;
 	this._goldCost = 0;
-	this._itemCost = 0;
-	this._costItemId = 0;
+	this._countdown = 0;
+	this._arrowBlinkTimer = 0;
+	this._lineHeight = this.lineHeight();
 }
 
 //Getters
 Window_MagicCraftCost.prototype.getWidth = function() { return this._width; }
 Window_MagicCraftCost.prototype.getHeight = function() { return this._height; }
 Window_MagicCraftCost.prototype.getGoldCost = function() { return this._goldCost; }
-Window_MagicCraftCost.prototype.getItemCost = function() { return this._itemCost; }
-Window_MagicCraftCost.prototype.getCostItemId = function() { return this._costItemId; }
+Window_MagicCraftCost.prototype.getCostItems = function() { return this._costItems; }
+Window_MagicCraftCost.prototype.meetsGoldCost = function() { return $gameParty.gold() >= this._goldCost; }
+Window_MagicCraftCost.prototype.meetsItemCost = function() {
+	let bPlayerHasAllItems = false;
+	for (let itemId of Object.keys(this._costItems)) {
+		let amount = this._costItems[itemId];
+		let itemData = $dataItems[itemId];
+		if ($gameParty.numItems(itemData) >= amount) {
+			bPlayerHasAllItems = true;
+		} else {
+			bPlayerHasAllItems = false;
+			break;
+		}
+	}
+
+	return bPlayerHasAllItems;
+}
+
 
 //Setters
 Window_MagicCraftCost.prototype.updateComponents = function(selectedComponents){
-	this._selectedComponents = selectedComponents;
+	this._selectedComponentIds = Object.values(selectedComponents);
 	this.refresh();
 }
 
 Window_MagicCraftCost.prototype.updateCatalysts = function(selectedCatalysts){
-	this._selectedCatalysts = selectedCatalysts;
+	this._selectedCatalystIds = Object.values(selectedCatalysts);
 	this.refresh();
 }
 
@@ -2932,51 +2965,92 @@ Window_MagicCraftCost.prototype.setSelectedSpellId = function(skId){
 //Doers
 Window_MagicCraftCost.prototype.refresh = function(){
 	this.contents.clear();
-	this.drawCostInfo();
+	if (this._selectedBaseSpellId > 0) {
+		this.generateCostData();
+	}
 }
 
-Window_MagicCraftCost.prototype.drawCostInfo = function(){
+Window_MagicCraftCost.prototype.generateCostData = function(){
+	let combinedCurrencyBaseCost = 0;
+	let combinedCurrencyBaseFactor = 0.0;
+	let combinedItemBaseCost = 0;
+	let combinedItemBaseFactor = 0.0;
+	let baseCurrencyCost = 0;
+	let baseCurrencyFactor = 0.0;
+	let baseItemCost = 0;
+	let baseItemFactor = 0;
+	let itemCost = 0;
+	let costItemIdList = [];
+	let numComp = this._selectedComponentIds.length;
+	let numCat = this._selectedCatalystIds.length;
 	let skLvl = 1;
-	let numComp = 1;
-	let numCat =  1;
-	let baseCost = 1;
-	let baseFactor = 1.0;
-	let finalBaseCost = 0;
-	let finalBaseFactor = 0.0;
-	for (let key of Object.keys(this._selectedComponents)) {
-		if (this._selectedComponents[key] != 0) {
-			numComp++;
-		}
 
+	for (let componentId of this._selectedComponentIds) {
 		let skillPluginData = LMPGamesCore.pluginData.magicCrafting.skillData
-			.find(sk => sk && sk.id == this._selectedComponents[key]);
+			.find(sk => sk && sk.Id == componentId);
 
 		if (skillPluginData) {
-			if (skillPluginData.hasOwnProperty('CurrencyBaseCost')) {
-				finalBaseCost += parseInt(skillPluginData.CurrencyBaseCost);
+			if (bEnableCurrencyCostSystem) {
+				if (skillPluginData.hasOwnProperty('CurrencyBaseCost')) {
+					combinedCurrencyBaseCost += getCurrencyBaseCost(parseInt(skillPluginData.CurrencyBaseCost));
+				}
+
+				if (skillPluginData.hasOwnProperty('CurrencyBaseFactor')) {
+					combinedCurrencyBaseFactor += getCurrencyBaseFactor(parseFloat(skillPluginData.CurrencyBaseFactor));
+				}
 			}
 
-			if (skillPluginData.hasOwnProperty('CurrencyBaseFactor')) {
-				finalBaseFactor += parseFloat(skillPlugData.CurrencyBaseFactor);
+			if (bEnableItemCostSystem) {
+				if (skillPluginData.hasOwnProperty('ItemBaseCost')) {
+					combinedItemBaseCost += getItemBaseCost(parseInt(skillPluginData.ItemBaseCost));
+				}
+
+				if (skillPluginData.hasOwnProperty('ItemBaseFactor')) {
+					combinedItemBaseFactor += getItemBaseFactor(parseFloat(skillPluginData.ItemBaseFactor));
+				}
+
+				if (skillPluginData.hasOwnProperty('CostItemId')) {
+					if (skillPluginData.CostItemId > 0) {
+						costItemIdList.push(skillPluginData.CostItemId);
+					} else {
+						costItemIdList.push(defaultCostItemId);
+					}
+				}
 			}
 		}
 	}
 
-	for (let key of Object.keys(this._selectedCatalysts)) {
-		if (this._selectedCatalysts[key] != 0) {
-			numCat++;
-		}
-
+	for (let catalystId of this._selectedCatalystIds) {
 		let itemPluginData = LMPGamesCore.pluginData.magicCrafting.itemData
-			.find(sk => sk && sk.id == this._selectedCatalysts[key]);
+			.find(sk => sk && sk.Id == catalystId);
 
 		if (itemPluginData) {
-			if (itemPluginData.hasOwnProperty('CurrencyBaseCost')) {
-				finalBaseCost += parseInt(itemPluginData.CurrencyBaseCost);
+			if (bEnableCurrencyCostSystem) {
+				if (itemPluginData.hasOwnProperty('CurrencyBaseCost')) {
+					combinedCurrencyBaseCost += getCurrencyBaseCost(parseInt(itemPluginData.CurrencyBaseCost));
+				}
+
+				if (itemPluginData.hasOwnProperty('CurrencyBaseFactor')) {
+					combinedCurrencyBaseFactor += getCurrencyBaseFactor(parseFloat(itemPluginData.CurrencyBaseFactor));
+				}
 			}
 
-			if (itemPluginData.hasOwnProperty('CurrencyBaseFactor')) {
-				finalBaseFactor += parseFloat(itemPluginData.CurrencyBaseFactor);
+			if (bEnableItemCostSystem) {
+				if (itemPluginData.hasOwnProperty('ItemBaseCost')) {
+					combinedItemBaseCost += getItemBaseCost(parseInt(itemPluginData.ItemBaseCost));
+				}
+
+				if (itemPluginData.hasOwnProperty('ItemBaseFactor')) {
+					combinedItemBaseFactor += getItemBaseFactor(parseFloat(itemPluginData.ItemBaseFactor));
+				}
+
+				if (itemPluginData.hasOwnProperty('CostItemId')) {
+					if (itemPluginData.CostItemId > 0) {
+						costItemIdList.push(itemPluginData.CostItemId);
+					} else {
+						costItemIdList.push(defaultCostItemId);
+					}
+				}
 			}
 		}
 	}
@@ -2988,16 +3062,50 @@ Window_MagicCraftCost.prototype.drawCostInfo = function(){
 		}
 
 		let selectedBaseSkillPluginData = LMPGamesCore.pluginData.magicCrafting.skillData
-			.find(sk => sk && sk.id == this._selectedBaseSpellId);
+			.find(sk => sk && sk.Id == this._selectedBaseSpellId);
 		if (selectedBaseSkillPluginData) {
-			if (selectedBaseSkillPluginData.hasOwnProperty('CurrencyBaseCost')) {
-				finalBaseCost += parseInt(selectedBaseSkillPluginData.CurrencyBaseCost);
+			if (bEnableCurrencyCostSystem) {
+				if (selectedBaseSkillPluginData.hasOwnProperty('CurrencyBaseCost')) {
+					combinedCurrencyBaseCost += getCurrencyBaseCost(parseInt(selectedBaseSkillPluginData.CurrencyBaseCost));
+				}
+
+				if (selectedBaseSkillPluginData.hasOwnProperty('CurrencyBaseFactor')) {
+					combinedCurrencyBaseFactor += getCurrencyBaseFactor(parseFloat(selectedBaseSkillPluginData.CurrencyBaseFactor));
+				}
 			}
 
-			if (selectedBaseSkillPluginData.hasOwnProperty('CurrencyBaseFactor')) {
-				finalBaseFactor += parseFloat(selectedBaseSkillPluginData.CurrencyBaseFactor);
+			if (bEnableItemCostSystem) {
+				if (selectedBaseSkillPluginData.hasOwnProperty('ItemBaseCost')) {
+					combinedItemBaseCost += getItemBaseCost(parseInt(selectedBaseSkillPluginData.ItemBaseCost));
+				}
+
+				if (selectedBaseSkillPluginData.hasOwnProperty('ItemBaseFactor')) {
+					combinedItemBaseFactor += getItemBaseFactor(parseFloat(selectedBaseSkillPluginData.ItemBaseFactor));
+				}
+
+				if (selectedBaseSkillPluginData.hasOwnProperty('CostItemId')) {
+					if (selectedBaseSkillPluginData.CostItemId > 0) {
+						costItemIdList.push(selectedBaseSkillPluginData.CostItemId);
+					} else {
+						costItemIdList.push(defaultCostItemId);
+					}
+				}
 			}
 		}
+	}
+
+	baseCurrencyCost = combinedCurrencyBaseCost;
+	baseCurrencyFactor = combinedCurrencyBaseFactor;
+	baseItemCost = combinedItemBaseCost;
+	baseItemFactor = combinedItemBaseFactor;
+
+	let totalCostItems = {};
+	for (let itemId of costItemIdList) {
+		if (!totalCostItems.hasOwnProperty(itemId)) {
+			totalCostItems[itemId] = 0;
+		}
+
+		totalCostItems[itemId] += 1;
 	}
 
 	if (bEnableGoldCost) {
@@ -3005,9 +3113,24 @@ Window_MagicCraftCost.prototype.drawCostInfo = function(){
 	}
 
 	if (bEnableItemCost) {
-		this._itemCost = eval(itemCostFormula);
+		itemCost = eval(itemCostFormula);
 	}
 
+	this._costItems = {};
+	for (let itemId of Object.keys(totalCostItems)) {
+		if (!this._costItems.hasOwnProperty(itemId)) {
+			this._costItems[itemId] = 0;
+		}
+
+		//TODO (Version 3): See if we should make Item/Currency calculate different costs per component spell/cat item
+		//incase we want each to have a unique item cost
+		this._costItems[itemId] = totalCostItems[itemId] * itemCost;
+	}
+
+	this.drawCostInfo();
+}
+
+Window_MagicCraftCost.prototype.drawCostInfo = function(){
 	let fmt = JSON.parse(paletteTxFmt) || undefined;
 	if (fmt){
 		let ttl = "Cost Requirements";
@@ -3022,7 +3145,6 @@ Window_MagicCraftCost.prototype.drawCostInfo = function(){
 		this.contents.fontSize = 26;
 		let ttlLen = this.contents.measureTextWidth(ttl);
 		let ttlPos = Math.floor(halfWndW - (ttlLen/1.5));
-		let header = "";
 
 		ttlPos = Math.floor((ttl.length < 10 ? ttlPos - (10 + (ttl.length/2)) : ttlPos + (ttl.length/2)));
 		ttl = LMPGamesCore.functions.addXShift(ttl, ttlPos);
@@ -3032,43 +3154,28 @@ Window_MagicCraftCost.prototype.drawCostInfo = function(){
 
 		let currencyCostString = "";
 		if (bEnableCurrencyCostSystem){
-			currencyCostString = TextManager.currencyUnit + ": " + String(goldCost);
+			currencyCostString = TextManager.currencyUnit + ": " + String(this._goldCost);
 			currencyCostString = LMPGamesCore.functions.addXShift(currencyCostString, 5);
+			currencyCostString = LMPGamesCore.functions.addBreak(currencyCostString, 'end');
 			costString = currencyCostString;
 		}
 
-		let itemCostPos = 5;
-		let itemCostString = "";
-		if (bEnableItemCostSystem){
-			let finalCostItemId = 0;
-			if (this._selectedBaseSpellId > 0) {
-				let pluginSkillData = LMPGamesCore.pluginData.magicCrafting.skillData.find(skl => skl && skl.id == this._selectedBasespellId);
-				if (pluginSkillData && pluginSkillData.hasOwnProperty("CostItemId")) {
-					finalCostItemId = pluginSkillData.CostItemId;
-				}
-			} else {
-				finalCostItemId = costItemId;
-			}
+		if (bEnableItemCostSystem) {
+			for (let itemId of Object.keys(this._costItems)) {
+				let costItemData = $dataItems.find(itm => itm && itm.id == itemId);
+				let costItemPluginData = LMPGamesCore.pluginData.magicCrafting.itemData
+					.find(itm => itm && itm.Id == itemId);
 
-			this._costItemId = finalCostItemId;
-			let selectedCostItemData = $dataItems.find(itm => itm && itm.id == finalCostItemId);
-			if (selectedCostItemData) {
-				itemCostString = "\\i[" + selectedCostItemData.iconIndex + "] " + selectedCostItemData.name + " x" + String(itemCost);
-				
-				if (bEnableCurrencyCostSystem) {
-					this.contents.fontSize = 24;
-					let textWidth = this.contents.measureTextWidth(itemCostString) + 12;
-					let wndWidth = this._width;
-					itemCostPos = (wndWidth - textWidth);
+				if (costItemData && costItemPluginData) {
+					let itemName = LMPGamesCore.functions.itemNameBuilder(costItemData, costItemPluginData.Alias, this._width, this.contents);
+					itemName = LMPGamesCore.functions.addXShift(itemName, 5);
+					costString += itemName;
 				}
-
-				itemCostString = LMPGamesCore.functions.addXShift(itemCostString, itemCostPos);
-				costString += itemCostString;
 			}
 		}
 
 		totalText = totalText.concat(ttl, costString, "", "", "", "");
-		text = fmt.format(ttl, costText, "", "", "", "");
+		text = fmt.format(ttl, costString, "", "", "", "");
 
 		if (totalText.length > 0){
 			textState = { index: 0 };
@@ -3081,6 +3188,54 @@ Window_MagicCraftCost.prototype.drawCostInfo = function(){
 		}
 	}
 }
+
+Window_MagicCraftCost.prototype.contentsHeight = function() {
+	return LMPGamesCore.functions.contentsHeight(this);
+};
+
+Window_MagicCraftCost.prototype.updateCountdown = function() {
+	LMPGamesCore.functions.updateCountdown(this);
+};
+
+Window_MagicCraftCost.prototype.scrollSpeed = function() {
+	return LMPGamesCore.funcitons.scrollSpeel(this)
+};
+
+Window_MagicCraftCost.prototype.scrollOriginDown = function(speed) {
+	LMPGamesCore.functions.scrollOriginDown(speed);
+};
+
+Window_MagicCraftCost.prototype.scrollOriginUp = function(speed) {
+	LMPCamesCore.functions.scollOriginUp(speed);
+};
+
+Window_MagicCraftCost.prototype.update = function() {
+	LMPGamesCore.functions.update(this);
+};
+
+Window_MagicCraftCost.prototype.updateKeyScrolling = function() {
+	LMPGamesCore.functions.updateKeyScrolling(this);
+};
+
+Window_MagicCraftCost.prototype.updateArrows = function() {
+	LMPGamesCore.functions.updateArrows(this);
+};
+
+Window_MagicCraftCost.prototype.showArrows = function() {
+	LMPGamesCore.functions.showArrows(this);
+};
+
+Window_MagicCraftCost.prototype.hideArrows = function() {
+	LMPGamesCore.functions.hideArrows(this);
+};
+
+Window_MagicCraftCost.prototype.isInsideFrame = function() {
+	LMPGamesCore.functions.isInsideFrame(this);
+};
+
+Window_MagicCraftCost.prototype.processWheel = function() {
+	LMPGamesCore.functions.processWheel(this);
+};
 
 
 /* Window_MagicCraftCommand Functions */
@@ -3302,7 +3457,7 @@ function processNewEffects(newSkillData, catalystItemsPluginData){
 			stateEffects.push(effect)
 		}
 	}
-	
+
 	let existingEffects = newSkillData.effects;
 	let finalEffects = [];
 	for (let stateEffect of stateEffects){
@@ -3343,4 +3498,20 @@ function getComponentPluginData(componentIds){
 function getCatalystPluginData(catalystIds){
 	return LMPGamesCore.pluginData.magicCrafting.itemData
 		.filter(itm => itm && catalystIds.includes(itm.Id));
+}
+
+function getCurrencyBaseCost(costOverride){
+	return (costOverride > 0 ? costOverride : defaultCurrencyBaseCost);
+}
+
+function getCurrencyBaseFactor(factorOverride){
+	return (factorOverride > 0.0 ? factorOverride : defaultCurrencyBaseFactor);
+}
+
+function getItemBaseCost(costOverride){
+	return (costOverride > 0 ? costOverride : defaultItemBaseCost);
+}
+
+function getItemBaseFactor(factorOverride){
+	return (factorOverride > 0.0 ? factorOverride : defaultItemBaseFactor);
 }
